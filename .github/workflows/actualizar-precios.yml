@@ -1,0 +1,27 @@
+name: Actualizar precios de gasolineras
+
+on:
+  schedule:
+    # 00:00, 08:00 y 16:00 hora de Madrid en invierno (en verano serán 01:00, 09:00 y 17:00)
+    - cron: "0 23,7,15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Descargar y procesar precios
+        run: node scripts/actualizar-precios.mjs
+      - name: Guardar cambios
+        run: |
+          git config user.name "actualizador-precios"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/data/estaciones.json
+          git diff --cached --quiet || (git commit -m "Actualiza precios de gasolineras" && git push)
