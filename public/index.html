@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gasolineras Cerca de Mí</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: calc(100vh - 140px); }
+        .custom-badge {
+            background: white;
+            border: 2px solid #3b82f6;
+            border-radius: 9999px;
+            padding: 2px 8px;
+            font-weight: bold;
+            font-size: 11px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+        .badge-cheapest { border-color: #22c55e !important; color: #15803d; background: #f0fdf4; }
+        .badge-expensive { border-color: #ef4444 !important; color: #b91c1c; background: #fef2f2; }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen overflow-hidden">
+
+    <!-- Header & Filtros -->
+    <header class="bg-white shadow-md z-10 p-3 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">⛽</span>
+            <h1 class="font-bold text-lg text-gray-800">Gasolineras Cerca</h1>
+            <span id="status" class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Cargando datos...</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+            <!-- Radio -->
+            <div class="flex items-center gap-1">
+                <label for="radioSelect" class="text-gray-600 font-medium">Radio:</label>
+                <select id="radioSelect" class="bg-gray-50 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="5">5 km</option>
+                    <option value="15" selected>15 km</option>
+                    <option value="30">30 km</option>
+                    <option value="50">50 km</option>
+                </select>
+            </div>
+
+            <!-- Combustible -->
+            <div class="flex items-center gap-1">
+                <label for="fuelSelect" class="text-gray-600 font-medium">Combustible:</label>
+                <select id="fuelSelect" class="bg-gray-50 border border-gray-300 rounded px-2 py-1 font-semibold text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="gasolina95" selected>Gasolina 95 E5</option>
+                    <option value="gasoleoA">Gasóleo A</option>
+                    <option value="gasolina98">Gasolina 98 E5</option>
+                    <option value="gasoleoPremium">Gasóleo A Premium</option>
+                    <option value="glp">GLP</option>
+                    <option value="gnc">GNC</option>
+                </select>
+            </div>
+
+            <!-- Marca (Nuevo) -->
+            <div class="flex items-center gap-1">
+                <label for="brandSelect" class="text-gray-600 font-medium">Marca:</label>
+                <select id="brandSelect" class="bg-gray-50 border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[150px]">
+                    <option value="ALL" selected>Todas las marcas</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mapa -->
+    <main class="flex-1 relative">
+        <div id="map" class="w-full h-full z-0"></div>
+    </main>
+
+    <!-- Modal de Detalle -->
+    <div id="stationModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-150">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            
+            <div class="flex items-center gap-3 mb-4">
+                <div id="modalBrandBadge" class="bg-blue-600 text-white font-bold px-3 py-1 rounded-lg text-sm">REPSOL</div>
+                <div>
+                    <h2 id="modalTitle" class="font-bold text-lg text-gray-900 leading-tight">Nombre Estación</h2>
+                    <p id="modalAddress" class="text-xs text-gray-500">Dirección completa</p>
+                </div>
+            </div>
+
+            <div class="mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center justify-between">
+                <span class="text-sm font-medium text-gray-600">Horario habitual:</span>
+                <span id="modalSchedule" class="text-xs text-gray-600 font-semibold">L-D: 06:00-22:00</span>
+            </div>
+
+            <div class="border-t border-gray-100 pt-3 mb-5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Precios Actualizados</h3>
+                <div id="modalPrices" class="grid grid-cols-2 gap-2 text-sm">
+                    <!-- Inyectado dinámicamente -->
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <a id="btnGoogleMaps" href="#" target="_blank" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-xl text-xs transition shadow-sm">
+                    📍 Google Maps
+                </a>
+                <a id="btnAppleMaps" href="#" target="_blank" class="flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-900 text-white font-medium py-2.5 px-4 rounded-xl text-xs transition shadow-sm">
+                    🧭 Apple Maps
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map, userMarker;
+        let markersLayer = L.layerGroup();
+        let allStations = [];
+        let userLat = 40.4168; // Default Madrid centro
+        let userLon = -3.7038;
+
+        const fuelNames = {
+            gasolina95: "Gasolina 95 E5",
+            gasolina98: "Gasolina 98 E5",
+            gasoleoA: "Gasóleo A",
+            gasoleoPremium: "Gasóleo A Premium",
+            glp: "GLP",
+            gnc: "GNC"
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            map = L.map('map').setView([userLat, userLon], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            markersLayer.addTo(map);
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        userLat = position.coords.latitude;
+                        userLon = position.coords.longitude;
+                        map.setView([userLat, userLon], 14);
+                        addUserMarker();
+                        loadStations();
+                    },
+                    error => {
+                        console.warn("Geolocalización denegada o fallida, usando coordenadas por defecto.");
+                        addUserMarker();
+                        loadStations();
+                    }
+                );
+            } else {
+                addUserMarker();
+                loadStations();
+            }
+
+            document.getElementById('radioSelect').addEventListener('change', filterAndRenderStations);
+            document.getElementById('fuelSelect').addEventListener('change', filterAndRenderStations);
+            document.getElementById('brandSelect').addEventListener('change', filterAndRenderStations);
+        });
+
+        function addUserMarker() {
+            if (userMarker) map.removeLayer(userMarker);
+            userMarker = L.marker([userLat, userLon], {
+                icon: L.divIcon({
+                    className: 'user-location-pin',
+                    html: '<div style="background:#3b82f6; width:16px; height:16px; border:3px solid white; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.4);"></div>',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                })
+            }).addTo(map).bindPopup("<b>Estás aquí</b>");
+        }
+
+        async function loadStations() {
+            const statusEl = document.getElementById('status');
+            try {
+                const res = await fetch('/api/gasolineras');
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                allStations = data.estaciones;
+
+                // Poblar el selector de marcas
+                const brandSelect = document.getElementById('brandSelect');
+                data.marcas.forEach(brand => {
+                    const opt = document.createElement('option');
+                    opt.value = brand;
+                    opt.textContent = brand;
+                    brandSelect.appendChild(opt);
+                });
+
+                statusEl.textContent = `${allStations.length} gasolineras cargadas`;
+                statusEl.className = "text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full";
+                filterAndRenderStations();
+            } catch (err) {
+                statusEl.textContent = "Error al cargar";
+                statusEl.className = "text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full";
+                console.error(err);
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function filterAndRenderStations() {
+            markersLayer.clearLayers();
+            const radius = parseFloat(document.getElementById('radioSelect').value);
+            const selectedFuel = document.getElementById('fuelSelect').value;
+            const selectedBrand = document.getElementById('brandSelect').value;
+
+            // Filtrar por radio, disponibilidad de combustible y marca
+            const nearbyStations = allStations.filter(station => {
+                const dist = calculateDistance(userLat, userLon, station.lat, station.lon);
+                station.distance = dist;
+
+                const matchesRadius = dist <= radius;
+                const matchesFuel = station.precios[selectedFuel] !== null;
+                const matchesBrand = selectedBrand === "ALL" || station.rotulo === selectedBrand;
+
+                return matchesRadius && matchesFuel && matchesBrand;
+            });
+
+            if (nearbyStations.length === 0) return;
+
+            // Mínimos y máximos dentro del subconjunto filtrado
+            const prices = nearbyStations.map(s => s.precios[selectedFuel]);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+
+            nearbyStations.forEach(station => {
+                const price = station.precios[selectedFuel];
+                let badgeClass = "custom-badge";
+                if (price === minPrice) badgeClass += " badge-cheapest";
+                else if (price === maxPrice && minPrice !== maxPrice) badgeClass += " badge-expensive";
+
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="${badgeClass}">${price.toFixed(3)} €</div>`,
+                    iconSize: [60, 24],
+                    iconAnchor: [30, 12]
+                });
+
+                const marker = L.marker([station.lat, station.lon], { icon });
+                marker.on('click', () => openModal(station, selectedFuel));
+                markersLayer.addLayer(marker);
+            });
+        }
+
+        function openModal(station, activeFuel) {
+            document.getElementById('modalTitle').textContent = station.rotulo;
+            document.getElementById('modalAddress').textContent = `${station.direccion}, ${station.municipio} (${station.provincia})`;
+            document.getElementById('modalBrandBadge').textContent = station.rotulo;
+            document.getElementById('modalSchedule').textContent = station.horario;
+
+            let pricesHtml = '';
+            for (const [key, val] of Object.entries(station.precios)) {
+                if (val !== null) {
+                    const isSelected = key === activeFuel;
+                    const highlightClass = isSelected ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400 font-bold text-blue-900' : 'bg-white border-gray-200 text-gray-700';
+                    pricesHtml += `
+                        <div class="p-2 rounded-lg border ${highlightClass} flex justify-between items-center text-xs">
+                            <span>${fuelNames[key]}</span>
+                            <span class="font-mono font-semibold">${val.toFixed(3)} €</span>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById('modalPrices').innerHTML = pricesHtml || '<span class="text-xs text-gray-400">Sin precios disponibles</span>';
+
+            document.getElementById('btnGoogleMaps').href = `https://www.google.com/maps/search/?api=1&query=${station.lat},${station.lon}`;
+            document.getElementById('btnAppleMaps').href = `https://maps.apple.com/?q=${station.lat},${station.lon}`;
+
+            document.getElementById('stationModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('stationModal').classList.add('hidden');
+        }
+
+        document.getElementById('stationModal').addEventListener('click', (e) => {
+            if (e.target.id === 'stationModal') closeModal();
+        });
+    </script>
+</body>
+</html>
