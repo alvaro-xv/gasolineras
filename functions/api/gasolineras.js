@@ -7,7 +7,7 @@ export async function onRequest(context) {
   try {
     const now = Date.now();
     if (!cachedData || (now - lastFetchTime) > CACHE_TTL) {
-      const response = await fetch("https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/");
+      const response = await fetch("https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/", { signal: AbortSignal.timeout(20000) });
       if (!response.ok) {
         throw new Error("Error al obtener datos del Ministerio");
       }
