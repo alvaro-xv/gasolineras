@@ -33,13 +33,14 @@ button, select { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 
 /* El mapa ocupa toda la pantalla, también bajo la isla dinámica y la barra de Safari */
+/* En la app de inicio (pantalla completa) el mapa sube hasta el borde superior, detrás de la barra de estado */
 #map {
   position: fixed;
-  top: 0;
+  top: calc(-1 * env(safe-area-inset-top, 0px));
   left: 0;
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
 }
 
 /* "Liquid glass": cristal translúcido con brillo en los bordes y desenfoque */
@@ -936,7 +937,12 @@ map.on("load", () => {
   addAreaLayers();
   refresh();
   locate();
+  map.resize();
 });
+
+// Recalcula el tamaño del mapa al girar el móvil o al cambiar la barra del navegador
+window.addEventListener("resize", () => map.resize());
+window.addEventListener("orientationchange", () => setTimeout(() => map.resize(), 300));
 
 $("searchArea").addEventListener("click", () => {
   view = { mode: "bounds", center: null };
