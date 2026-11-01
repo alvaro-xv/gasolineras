@@ -32,27 +32,27 @@ body {
 button, select { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 
-/* El mapa ocupa toda la pantalla: sube hasta el borde superior (bajo la barra de estado)
-   y baja hasta el borde inferior (bajo la barra de la app). */
+/* El mapa se pasa de los bordes a propósito: así no queda ninguna franja, ni bajo la barra de estado
+   ni bajo la barra inferior (lo que sobra queda fuera de la pantalla) */
 #map {
   position: fixed;
   left: 0;
   right: 0;
-  top: calc(-1 * env(safe-area-inset-top, 0px));
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  top: -120px;
+  bottom: -120px;
 }
 
-/* "Liquid glass": cristal translúcido con brillo en los bordes y desenfoque */
+/* "Liquid glass": cristal translúcido con brillo en los bordes */
 .glass {
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04)),
-    rgba(20, 20, 24, 0.3);
-  -webkit-backdrop-filter: blur(24px) saturate(170%);
-  backdrop-filter: blur(24px) saturate(170%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(20, 20, 24, 0.55);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
     0 12px 40px rgba(0, 0, 0, 0.45);
   border-radius: 26px;
 }
@@ -91,53 +91,34 @@ button, select { font: inherit; color: inherit; }
 .ctl {
   flex: 1 1 0;
   min-width: 0;
+  height: 40px;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  border: 0;
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text);
-  padding: 9px 10px;
+  padding: 0 10px;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.ctl .icon { flex: 0 0 auto; display: flex; align-items: center; font-size: 16px; }
+.ctl select {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0;
   font-size: 14px;
   font-weight: 600;
+  text-align: center;
+  text-align-last: center;
+  -webkit-appearance: none;
+  appearance: none;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  text-overflow: ellipsis;
 }
-.ctl .icon { flex: 0 0 auto; }
-.ctl .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.menu {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  z-index: 9;
-  max-height: 55vh;
-  overflow-y: auto;
-  padding: 6px;
-  border-radius: 22px;
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  background: rgba(28, 28, 30, 0.82);
-}
-.menu-item {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  text-align: left;
-  padding: 12px 14px;
-  border-radius: 14px;
-  font-size: 15px;
-  cursor: pointer;
-}
-.menu-item:active { background: rgba(255, 255, 255, 0.08); }
-.menu-item.on { color: var(--blue); font-weight: 700; }
-.menu-item.on::after { content: "✓"; }
+.ctl select option { color: #000; }
+.ctl .caret { flex: 0 0 auto; font-size: 10px; color: var(--muted); }
 
 .extremes {
   display: grid;
@@ -156,15 +137,16 @@ button, select { font: inherit; color: inherit; }
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
-.extreme .row { display: flex; align-items: baseline; gap: 6px; }
-.extreme .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); }
 .extreme .v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .extreme.cheap .v { color: var(--green); }
 .extreme.exp .v { color: var(--red); }
 .extreme .s { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Precio: dos decimales grandes y el tercero pequeño arriba, como en las gasolineras */
+sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 
 .notice {
   align-self: center;
@@ -379,30 +361,34 @@ button, select { font: inherit; color: inherit; }
     </div>
   </div>
 
-  <div class="glass controls" id="controls">
-    <button class="ctl" id="fuelBtn" type="button" aria-haspopup="true">
-      <span class="icon">🛢️</span><span class="label" id="fuelLabel">Gasolina 95 E5</span>
-    </button>
-    <button class="ctl" id="brandBtn" type="button" aria-haspopup="true">
-      <span class="icon">⛽</span><span class="label" id="brandLabel">Todas las marcas</span>
-    </button>
+  <div class="glass controls">
+    <label class="ctl">
+      <span class="icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#ff453a" d="M12 2.5C9 6.6 6 10.2 6 14a6 6 0 0 0 12 0c0-3.8-3-7.4-6-11.5z"/></svg>
+      </span>
+      <select id="fuelSelect" aria-label="Combustible"></select>
+      <span class="caret" aria-hidden="true">▼</span>
+    </label>
+    <label class="ctl">
+      <span class="icon" aria-hidden="true">⛽</span>
+      <select id="brandSelect" aria-label="Marca"></select>
+      <span class="caret" aria-hidden="true">▼</span>
+    </label>
   </div>
 
   <div class="glass extremes hidden" id="extremes">
     <button class="extreme cheap" id="cheapBtn" type="button">
-      <span class="row"><span class="k">Barata</span><span class="v" id="cheapPrice"></span></span>
+      <span class="v" id="cheapPrice"></span>
       <span class="s" id="cheapInfo"></span>
     </button>
     <button class="extreme exp" id="expBtn" type="button">
-      <span class="row"><span class="k">Cara</span><span class="v" id="expPrice"></span></span>
+      <span class="v" id="expPrice"></span>
       <span class="s" id="expInfo"></span>
     </button>
   </div>
 
   <div class="glass notice hidden" id="notice"></div>
 </div>
-
-<div id="menu" class="glass menu hidden"></div>
 
 <button id="searchArea" class="glass pill hidden" type="button">Buscar en esta zona</button>
 <button id="locate" class="glass round" type="button" aria-label="Centrar en mi ubicación">◎</button>
@@ -505,15 +491,20 @@ function distKm(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-function fmtPrice(p) {
-  return p.toFixed(3).replace(".", ",") + " €";
+// 1,09⁹ €: dos decimales grandes y el tercero pequeño arriba (sin redondear, para no engañar)
+function priceHtml(p) {
+  const s = p.toFixed(3);            // "1.099"
+  const main = s.slice(0, -1).replace(".", ",");  // "1,09"
+  const last = s.slice(-1);          // "9"
+  return `${main}<sup>${last}</sup>&nbsp;€`;
 }
 
 function formatUpdated(iso) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString("es-ES", {
-    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
-  }).replace(",", "");
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+  const time = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  return `${date} · ${time}`;
 }
 
 function normalizeBrand(raw) {
@@ -624,66 +615,32 @@ function scheduleStatus(h) {
   return { open: false, text: "Cerrado" };
 }
 
-// ---------- Menús de combustible y marca ----------
+// ---------- Selectores nativos de combustible y marca ----------
 
-function brandOptions() {
+function buildFuelSelect() {
+  const sel = $("fuelSelect");
+  sel.innerHTML = "";
+  Object.entries(FUEL_NAMES).forEach(([value, label]) => sel.add(new Option(label, value)));
+  sel.value = fuel;
+  sel.addEventListener("change", () => {
+    fuel = sel.value;
+    refresh();
+  });
+}
+
+function buildBrandSelect() {
+  const sel = $("brandSelect");
   const present = new Set(stations.map((s) => s.marca));
   const names = BRAND_RULES.map(([name]) => name).concat(OTHERS);
-  return [{ value: "ALL", label: "Todas las marcas" }]
-    .concat(names.filter((n) => present.has(n)).map((n) => ({ value: n, label: n })));
-}
-
-function closeMenu() {
-  $("menu").classList.add("hidden");
-}
-
-function openMenu(kind) {
-  const menu = $("menu");
-  if (!menu.classList.contains("hidden") && menu.dataset.kind === kind) {
-    closeMenu();
-    return;
-  }
-  const items = kind === "fuel"
-    ? Object.entries(FUEL_NAMES).map(([value, label]) => ({ value, label }))
-    : brandOptions();
-  const current = kind === "fuel" ? fuel : brandFilter;
-
-  menu.innerHTML = "";
-  menu.dataset.kind = kind;
-  items.forEach((it) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "menu-item" + (it.value === current ? " on" : "");
-    btn.textContent = it.label;
-    btn.addEventListener("click", () => {
-      if (kind === "fuel") {
-        fuel = it.value;
-        $("fuelLabel").textContent = FUEL_NAMES[fuel];
-      } else {
-        brandFilter = it.value;
-        $("brandLabel").textContent = it.value === "ALL" ? "Todas las marcas" : it.label;
-      }
-      closeMenu();
-      refresh();
-    });
-    menu.appendChild(btn);
+  sel.innerHTML = "";
+  sel.add(new Option("Todas las marcas", "ALL"));
+  names.filter((n) => present.has(n)).forEach((n) => sel.add(new Option(n, n)));
+  sel.value = brandFilter;
+  sel.addEventListener("change", () => {
+    brandFilter = sel.value;
+    refresh();
   });
-
-  menu.style.top = ($("controls").getBoundingClientRect().bottom + 6) + "px";
-  menu.classList.remove("hidden");
 }
-
-function buildBrandLabel() {
-  $("brandLabel").textContent = "Todas las marcas";
-  $("fuelLabel").textContent = FUEL_NAMES[fuel];
-}
-
-// Cierra el menú al tocar fuera de él
-document.addEventListener("click", (e) => {
-  if ($("menu").classList.contains("hidden")) return;
-  if ($("menu").contains(e.target) || e.target.closest(".ctl")) return;
-  closeMenu();
-});
 
 // ---------- Filtrado y pintado ----------
 
@@ -720,14 +677,18 @@ function makePin(station, price, cls) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "pin " + cls;
-  btn.textContent = fmtPrice(price);
-  btn.setAttribute("aria-label", `${station.marca}, ${fmtPrice(price)}`);
+  btn.innerHTML = priceHtml(price);
+  btn.setAttribute("aria-label", `${station.marca}, ${fmtPlain(price)}`);
   btn.addEventListener("click", (e) => {
     e.stopPropagation();
     openModal(station);
   });
   wrap.appendChild(btn);
   return wrap;
+}
+
+function fmtPlain(p) {
+  return p.toFixed(3).replace(".", ",") + " €";
 }
 
 function renderExtremes(entries) {
@@ -745,10 +706,10 @@ function renderExtremes(entries) {
   });
   extremeStations = { cheap, exp };
 
-  $("cheapPrice").textContent = fmtPrice(cheap.precios[fuel]);
-  $("cheapInfo").textContent = `${cheap.marca} · ${cheap.municipio}`;
-  $("expPrice").textContent = fmtPrice(exp.precios[fuel]);
-  $("expInfo").textContent = `${exp.marca} · ${exp.municipio}`;
+  $("cheapPrice").innerHTML = priceHtml(cheap.precios[fuel]);
+  $("cheapInfo").textContent = `Barata · ${cheap.marca} · ${cheap.municipio}`;
+  $("expPrice").innerHTML = priceHtml(exp.precios[fuel]);
+  $("expInfo").textContent = `Cara · ${exp.marca} · ${exp.municipio}`;
   box.classList.remove("hidden");
 }
 
@@ -773,8 +734,7 @@ function renderEntries(entries) {
 
   renderExtremes(entries);
 
-  const total = entries.length;
-  $("count").textContent = `Gasolineras: ${total}`;
+  $("count").textContent = `Gasolineras: ${entries.length}`;
   $("status").textContent = updatedAt ? `Últ. act. ${formatUpdated(updatedAt)}` : "";
 }
 
@@ -905,6 +865,7 @@ async function loadData() {
     const json = await res.json();
     stations = json.estaciones.map((s) => ({ ...s, marca: normalizeBrand(s.rotulo) }));
     updatedAt = json.fechaActualizacion;
+    buildBrandSelect();
     hideLoader();
     refresh();
   } catch (err) {
@@ -932,7 +893,7 @@ function openModal(s) {
     const label = document.createElement("span");
     label.textContent = FUEL_NAMES[key];
     const value = document.createElement("b");
-    value.textContent = fmtPrice(val);
+    value.innerHTML = priceHtml(val);
     box.append(label, value);
     list.appendChild(box);
   });
@@ -994,9 +955,6 @@ $("searchArea").addEventListener("click", () => {
   refresh();
 });
 
-$("fuelBtn").addEventListener("click", () => openMenu("fuel"));
-$("brandBtn").addEventListener("click", () => openMenu("brand"));
-
 $("cheapBtn").addEventListener("click", () => {
   if (extremeStations.cheap) openModal(extremeStations.cheap);
 });
@@ -1011,7 +969,7 @@ $("modal").addEventListener("click", (e) => {
   if (e.target.id === "modal") closeModal();
 });
 
-buildBrandLabel();
+buildFuelSelect();
 loadData();
 </script>
 </body>
