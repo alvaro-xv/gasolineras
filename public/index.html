@@ -7,14 +7,12 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root {
-  color-scheme: light;
-  --bg: #f2f2f7;
-  --card: rgba(255, 255, 255, 0.8);
-  --text: #1c1c1e;
-  --muted: #8e8e93;
-  --blue: #007aff;
-  --green: #34c759;
-  --shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  color-scheme: dark;
+  --text: #f5f5f7;
+  --muted: rgba(235, 235, 245, 0.6);
+  --blue: #0a84ff;
+  --green: #30d158;
+  --red: #ff453a;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -22,21 +20,26 @@ html, body { margin: 0; height: 100%; }
 body {
   font-family: var(--font);
   color: var(--text);
-  background: var(--bg);
+  background: #000;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
-button, select { font: inherit; }
+button, select { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 
 #map { position: fixed; inset: 0; }
 
+/* "Liquid glass": cristal translúcido con brillo en los bordes y desenfoque */
 .glass {
-  background: var(--card);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
-  border-radius: 18px;
-  box-shadow: var(--shadow);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.05));
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 40px rgba(0, 0, 0, 0.45);
+  border-radius: 28px;
 }
 
 .top {
@@ -61,17 +64,22 @@ button, select { font: inherit; }
 }
 .title { font-weight: 700; font-size: 17px; letter-spacing: -0.2px; }
 .status { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
 .brand-select {
   border: 0;
-  background: rgba(118, 118, 128, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   color: var(--text);
-  padding: 8px 12px;
-  border-radius: 12px;
+  padding: 9px 14px;
+  border-radius: 14px;
   font-size: 14px;
   font-weight: 600;
-  max-width: 170px;
+  max-width: 180px;
   outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
+.brand-select option { background: #1c1c1e; color: #f5f5f7; }
 
 .fuels {
   display: flex;
@@ -79,14 +87,15 @@ button, select { font: inherit; }
   padding: 8px;
   overflow-x: auto;
   scrollbar-width: none;
+  border-radius: 999px;
 }
 .fuels::-webkit-scrollbar { display: none; }
 .chip {
   flex: 0 0 auto;
   border: 0;
-  background: rgba(118, 118, 128, 0.12);
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text);
-  padding: 7px 13px;
+  padding: 8px 14px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
@@ -101,14 +110,18 @@ button, select { font: inherit; }
   bottom: 32px;
   transform: translateX(-50%);
   z-index: 6;
-  border: 0;
-  padding: 12px 20px;
+  padding: 13px 22px;
   border-radius: 999px;
-  color: var(--blue);
+  color: #fff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  background: rgba(10, 132, 255, 0.85);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 12px 30px rgba(0, 0, 0, 0.4);
 }
 
 .round {
@@ -116,33 +129,35 @@ button, select { font: inherit; }
   left: 16px;
   bottom: 32px;
   z-index: 6;
-  width: 46px;
-  height: 46px;
-  border: 0;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   font-size: 20px;
-  color: var(--blue);
+  color: #fff;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
 }
 
+/* Cada pin va dentro de un contenedor que MapLibre posiciona; no le ponemos transiciones */
+.pin-wrap { width: auto; height: auto; }
 .pin {
-  background: #fff;
-  color: var(--text);
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(28, 28, 30, 0.82);
+  color: #fff;
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  transition: transform 0.15s;
+  font-variant-numeric: tabular-nums;
 }
-.pin:hover { transform: scale(1.06); }
-.pin.cheap { background: var(--green); color: #fff; }
+.pin.cheap { background: rgba(48, 209, 88, 0.92); border-color: rgba(255, 255, 255, 0.4); }
+.pin.exp { background: rgba(255, 69, 58, 0.92); border-color: rgba(255, 255, 255, 0.4); }
 
 .me {
   width: 16px;
@@ -150,7 +165,7 @@ button, select { font: inherit; }
   border-radius: 50%;
   background: var(--blue);
   border: 3px solid #fff;
-  box-shadow: 0 0 0 6px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 6px rgba(10, 132, 255, 0.25);
 }
 
 .loader {
@@ -160,7 +175,7 @@ button, select { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(242, 242, 247, 0.5);
+  background: rgba(0, 0, 0, 0.35);
 }
 .loader-card {
   padding: 22px 26px;
@@ -175,7 +190,7 @@ button, select { font: inherit; }
 .spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(0, 122, 255, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.2);
   border-top-color: var(--blue);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -185,7 +200,7 @@ button, select { font: inherit; }
   border: 0;
   background: var(--blue);
   color: #fff;
-  padding: 8px 16px;
+  padding: 9px 18px;
   border-radius: 999px;
   font-weight: 600;
   cursor: pointer;
@@ -195,50 +210,57 @@ button, select { font: inherit; }
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: flex-end;
   justify-content: center;
 }
 .sheet {
-  background: #fff;
+  background: rgba(28, 28, 30, 0.9);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
   width: 100%;
   max-width: 480px;
-  max-height: 80vh;
+  max-height: 82vh;
   overflow-y: auto;
-  border-radius: 20px 20px 0 0;
+  border-radius: 28px 28px 0 0;
   padding: 20px;
-  box-shadow: var(--shadow);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 @media (min-width: 640px) {
   .modal { align-items: center; }
-  .sheet { border-radius: 20px; }
+  .sheet { border-radius: 28px; }
 }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.sheet-title { font-size: 18px; font-weight: 700; margin: 0; }
+.sheet-title { font-size: 19px; font-weight: 700; margin: 0; }
 .sheet-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
 .close {
   border: 0;
-  background: rgba(118, 118, 128, 0.12);
-  width: 30px;
-  height: 30px;
+  background: rgba(255, 255, 255, 0.12);
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
   color: var(--muted);
+  flex: 0 0 auto;
 }
 .info {
   margin: 16px 0 12px;
-  padding: 12px 14px;
-  background: #f2f2f7;
-  border-radius: 14px;
+  padding: 13px 14px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
   font-size: 13px;
   display: flex;
   justify-content: space-between;
   gap: 12px;
 }
-.info span:last-child { color: var(--muted); text-align: right; }
+.info .label { color: var(--muted); }
+#modalSchedule { font-weight: 600; text-align: right; }
+#modalSchedule.open { color: var(--green); }
+#modalSchedule.closed { color: var(--red); }
 .prices-title {
   font-size: 12px;
   font-weight: 700;
@@ -249,28 +271,29 @@ button, select { font: inherit; }
 }
 .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .price {
-  border-radius: 12px;
-  padding: 10px 12px;
-  background: #f2f2f7;
+  border-radius: 14px;
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.07);
   font-size: 13px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  color: var(--muted);
 }
-.price b { font-size: 15px; font-variant-numeric: tabular-nums; }
-.price.selected { background: rgba(0, 122, 255, 0.12); color: var(--blue); }
+.price b { font-size: 16px; color: var(--text); font-variant-numeric: tabular-nums; }
+.price.selected { background: rgba(10, 132, 255, 0.22); }
 .links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
 .links a {
   text-align: center;
   text-decoration: none;
-  padding: 12px;
-  border-radius: 14px;
+  padding: 13px;
+  border-radius: 16px;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
   background: var(--blue);
 }
-.links a.apple { background: #1c1c1e; }
+.links a.apple { background: rgba(255, 255, 255, 0.14); }
 </style>
 </head>
 <body>
@@ -284,7 +307,7 @@ button, select { font: inherit; }
       <div class="status" id="status">Buscando tu ubicación…</div>
     </div>
     <select id="brandSelect" class="brand-select" aria-label="Marca">
-      <option value="ALL">Todas</option>
+      <option value="ALL">Todas las marcas</option>
     </select>
   </div>
   <div class="glass fuels" id="fuelChips" role="group" aria-label="Combustible"></div>
@@ -311,7 +334,7 @@ button, select { font: inherit; }
       <button class="close" id="modalClose" type="button" aria-label="Cerrar">×</button>
     </div>
     <div class="info">
-      <span>Horario</span>
+      <span class="label">Horario</span>
       <span id="modalSchedule"></span>
     </div>
     <div class="prices-title">Precios</div>
@@ -326,7 +349,7 @@ button, select { font: inherit; }
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 const API_URL = "/api/gasolineras";
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
+const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const RADIUS_KM = 15;
 const MAX_PINS = 300;
 const DEFAULT_CENTER = { lat: 40.4168, lng: -3.7038 }; // Madrid
@@ -340,12 +363,30 @@ const FUEL_NAMES = {
   gnc: "GNC"
 };
 
-// Marcas conocidas: si el rótulo empieza por una de ellas, se agrupa bajo ese nombre
-const KNOWN_BRANDS = [
-  "REPSOL", "CEPSA", "MOEVE", "BP", "SHELL", "GALP", "PLENOIL", "BALLENOIL",
-  "PETRONOR", "AVIA", "Q8", "CARREFOUR", "ALCAMPO", "E.LECLERC", "AUCHAN",
-  "EROSKI", "DISA", "TAMOIL", "NATURGY"
+// Marcas que se muestran por separado. Todo lo que no encaje cae en "Otros".
+const BRAND_RULES = [
+  ["Repsol", ["REPSOL"]],
+  ["Moeve / Cepsa", ["MOEVE", "CEPSA", "CAMPSA"]],
+  ["Shell", ["SHELL"]],
+  ["BP", ["BP"]],
+  ["Galp", ["GALP"]],
+  ["Ballenoil", ["BALLENOIL"]],
+  ["Plenergy", ["PLENERGY"]],
+  ["Petronor", ["PETRONOR"]],
+  ["Carrefour", ["CARREFOUR"]],
+  ["Avia", ["AVIA"]],
+  ["Q8", ["Q8"]],
+  ["Alcampo", ["ALCAMPO"]],
+  ["Eroski", ["EROSKI"]],
+  ["E.Leclerc", ["E.LECLERC", "LECLERC"]],
+  ["Tamoil", ["TAMOIL"]],
+  ["Disa", ["DISA"]],
+  ["Naturgy", ["NATURGY"]]
 ];
+const OTHERS = "Otros";
+
+const DAY_IDX = { L: 0, M: 1, X: 2, J: 3, V: 4, S: 5, D: 6 };
+const DAY_NAMES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 
 let map;
 let stations = [];       // estaciones con marca normalizada
@@ -375,18 +416,6 @@ function fmtPrice(p) {
   return p.toFixed(3).replace(".", ",") + " €";
 }
 
-function prettify(s) {
-  if (s.length <= 2) return s;
-  return s.toLowerCase().replace(/(^|[\s.\-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
-}
-
-function normalizeBrand(raw) {
-  const t = (raw || "").trim().toUpperCase();
-  if (!t || t === "OTRA" || t.includes("SIN RÓTULO") || t.includes("SIN ROTULO")) return "Sin marca";
-  const hit = KNOWN_BRANDS.find((b) => t === b || t.startsWith(b + " ") || t.startsWith(b + "-"));
-  return prettify(hit || t);
-}
-
 function formatUpdated(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleString("es-ES", {
@@ -394,11 +423,106 @@ function formatUpdated(iso) {
   });
 }
 
+function normalizeBrand(raw) {
+  const t = (raw || "").trim().toUpperCase().replace(/\s+/g, " ");
+  for (const [name, keys] of BRAND_RULES) {
+    for (const k of keys) {
+      if (t === k || t.startsWith(k + " ") || t.startsWith(k + "-") || t.startsWith(k + ".")) return name;
+    }
+  }
+  return OTHERS;
+}
+
 function setStatus(text) {
   $("status").textContent = text;
 }
 
-// ---------- Interfaz de filtros ----------
+// ---------- Horarios ----------
+
+function hhmm(m) {
+  return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+}
+
+function expandDays(str) {
+  const set = new Set();
+  for (const tok of str.split(",")) {
+    const [a, b] = tok.split("-");
+    const start = DAY_IDX[a];
+    const end = b ? DAY_IDX[b] : start;
+    for (let d = start; ; d = (d + 1) % 7) {
+      set.add(d);
+      if (d === end) break;
+    }
+  }
+  return set;
+}
+
+function parseSchedule(h) {
+  if (!h) return null;
+  const segs = [];
+  for (const part of h.split(";")) {
+    const m = part.trim().match(/^([LMXJVSD](?:-[LMXJVSD])?(?:,[LMXJVSD](?:-[LMXJVSD])?)*)\s*:\s*(.+)$/);
+    if (!m) return null;
+    const days = expandDays(m[1]);
+    const times = m[2].trim();
+    if (/24\s*H/i.test(times)) { segs.push({ days, all: true }); continue; }
+    const tm = times.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+    if (!tm) return null;
+    const start = Number(tm[1]) * 60 + Number(tm[2]);
+    let end = Number(tm[3]) * 60 + Number(tm[4]);
+    if (end === 0) end = 1440; // "hasta las 00:00" = medianoche
+    segs.push({ days, start, end });
+  }
+  return segs;
+}
+
+// Hora actual en Madrid: día de la semana (0 = lunes) y minutos desde las 00:00
+function madridNow() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Madrid", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type).value;
+  const dow = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[get("weekday")];
+  return { dow, min: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
+}
+
+function scheduleStatus(h) {
+  const segs = parseSchedule(h);
+  if (!segs) return { open: null, text: h || "Sin datos" };
+  const now = madridNow();
+
+  // ¿Está abierto ahora? Miramos hoy y también el turno de ayer que cruza la medianoche
+  for (const off of [0, -1]) {
+    const dow = (now.dow + off + 7) % 7;
+    const t = now.min - off * 1440;
+    for (const seg of segs) {
+      if (!seg.days.has(dow)) continue;
+      if (seg.all) return { open: true, text: "Abierto 24 horas" };
+      let s = seg.start;
+      let e = seg.end;
+      if (e <= s) e += 1440;
+      if (t >= s && t < e) return { open: true, text: `Abierto · cierra a las ${hhmm(e % 1440)}` };
+    }
+  }
+
+  // Cerrado: buscamos el próximo turno de apertura
+  for (let k = 0; k <= 7; k++) {
+    const dow = (now.dow + k) % 7;
+    let best = null;
+    for (const seg of segs) {
+      if (!seg.days.has(dow) || seg.all) continue;
+      const abs = k * 1440 + seg.start;
+      if (abs > now.min && (best === null || abs < best.abs)) best = { abs, start: seg.start };
+    }
+    if (best) {
+      const when = k === 0 ? "hoy" : k === 1 ? "mañana" : "el " + DAY_NAMES[dow];
+      return { open: false, text: `Cerrado · abre ${when} a las ${hhmm(best.start)}` };
+    }
+  }
+  return { open: false, text: "Cerrado" };
+}
+
+// ---------- Filtros ----------
 
 function buildFuelChips() {
   const box = $("fuelChips");
@@ -419,19 +543,14 @@ function buildFuelChips() {
 }
 
 function buildBrandSelect() {
-  const counts = {};
-  stations.forEach((s) => { counts[s.marca] = (counts[s.marca] || 0) + 1; });
-  const names = Object.keys(counts).sort((a, b) => {
-    if (a === "Sin marca") return 1;
-    if (b === "Sin marca") return -1;
-    return a.localeCompare(b, "es");
-  });
+  const present = new Set(stations.map((s) => s.marca));
   const select = $("brandSelect");
-  select.innerHTML = '<option value="ALL">Todas</option>';
-  names.forEach((name) => {
+  select.innerHTML = '<option value="ALL">Todas las marcas</option>';
+  const names = BRAND_RULES.map(([name]) => name).concat(OTHERS);
+  names.filter((name) => present.has(name)).forEach((name) => {
     const opt = document.createElement("option");
     opt.value = name;
-    opt.textContent = `${name} (${counts[name]})`;
+    opt.textContent = name;
     select.appendChild(opt);
   });
   select.addEventListener("change", () => {
@@ -469,23 +588,35 @@ function clearMarkers() {
   markers = [];
 }
 
+function makePin(station, price, cls) {
+  const wrap = document.createElement("div");
+  wrap.className = "pin-wrap";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "pin " + cls;
+  btn.textContent = fmtPrice(price);
+  btn.setAttribute("aria-label", `${station.marca}, ${fmtPrice(price)}`);
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openModal(station);
+  });
+  wrap.appendChild(btn);
+  return wrap;
+}
+
 function renderEntries(entries) {
   clearMarkers();
   const shown = entries.slice(0, MAX_PINS);
   const prices = shown.map((x) => x.s.precios[fuel]);
   const min = prices.length ? Math.min(...prices) : null;
+  const max = prices.length ? Math.max(...prices) : null;
 
   shown.forEach(({ s }) => {
     const price = s.precios[fuel];
-    const el = document.createElement("button");
-    el.type = "button";
-    el.className = "pin" + (price === min ? " cheap" : "");
-    el.textContent = fmtPrice(price);
-    el.setAttribute("aria-label", `${s.marca}, ${fmtPrice(price)}`);
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openModal(s);
-    });
+    let cls = "";
+    if (price === min) cls = "cheap";
+    else if (price === max && max !== min) cls = "exp";
+    const el = makePin(s, price, cls);
     markers.push(
       new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([s.lon, s.lat])
@@ -494,8 +625,7 @@ function renderEntries(entries) {
   });
 
   const total = entries.length;
-  const parts = [];
-  parts.push(total === 0 ? "Sin estaciones aquí" : `${total} estaciones`);
+  const parts = [total === 0 ? "Sin estaciones aquí" : `${total} estaciones`];
   if (total > MAX_PINS) parts.push(`mostrando ${MAX_PINS} más cercanas`);
   if (updatedAt) parts.push(`precios del ${formatUpdated(updatedAt)}`);
   setStatus(parts.join(" · "));
@@ -503,10 +633,67 @@ function renderEntries(entries) {
 
 function refresh() {
   if (!stations.length) return;
-  const entries = view.mode === "radius" && view.center
-    ? stationsNear(view.center, RADIUS_KM)
-    : stationsInView();
+  let entries;
+  if (view.mode === "radius" && view.center) {
+    entries = stationsNear(view.center, RADIUS_KM);
+    drawArea(circlePolygon(view.center.lat, view.center.lng, RADIUS_KM));
+  } else {
+    entries = stationsInView();
+    drawArea(viewPolygon());
+  }
   renderEntries(entries);
+}
+
+// ---------- Área de búsqueda ----------
+
+function circlePolygon(lat, lng, km, steps = 96) {
+  const R = 6371;
+  const d = km / R;
+  const lat1 = (lat * Math.PI) / 180;
+  const lon1 = (lng * Math.PI) / 180;
+  const coords = [];
+  for (let i = 0; i <= steps; i++) {
+    const brng = (2 * Math.PI * i) / steps;
+    const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng));
+    const lon2 = lon1 + Math.atan2(
+      Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
+      Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+    );
+    coords.push([(lon2 * 180) / Math.PI, (lat2 * 180) / Math.PI]);
+  }
+  return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [coords] } };
+}
+
+function viewPolygon() {
+  const b = map.getBounds();
+  const w = b.getWest(), e = b.getEast(), s = b.getSouth(), n = b.getNorth();
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "Polygon", coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] }
+  };
+}
+
+function drawArea(feature) {
+  const src = map && map.getSource("area");
+  if (!src) return;
+  src.setData({ type: "FeatureCollection", features: feature ? [feature] : [] });
+}
+
+function addAreaLayers() {
+  map.addSource("area", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({
+    id: "area-fill",
+    type: "fill",
+    source: "area",
+    paint: { "fill-color": "#0a84ff", "fill-opacity": 0.08 }
+  });
+  map.addLayer({
+    id: "area-line",
+    type: "line",
+    source: "area",
+    paint: { "line-color": "#0a84ff", "line-width": 1.5, "line-opacity": 0.9, "line-dasharray": [2, 2] }
+  });
 }
 
 // ---------- Ubicación ----------
@@ -514,7 +701,10 @@ function refresh() {
 function showUser(loc) {
   if (userMarker) userMarker.remove();
   const el = document.createElement("div");
-  el.className = "me";
+  el.className = "pin-wrap";
+  const dot = document.createElement("div");
+  dot.className = "me";
+  el.appendChild(dot);
   userMarker = new maplibregl.Marker({ element: el }).setLngLat([loc.lng, loc.lat]).addTo(map);
 }
 
@@ -578,7 +768,11 @@ async function loadData() {
 function openModal(s) {
   $("modalTitle").textContent = s.marca;
   $("modalAddress").textContent = [s.direccion, s.municipio, s.provincia].filter(Boolean).join(", ");
-  $("modalSchedule").textContent = s.horario;
+
+  const sched = scheduleStatus(s.horario);
+  const schedEl = $("modalSchedule");
+  schedEl.textContent = sched.text;
+  schedEl.className = sched.open === true ? "open" : sched.open === false ? "closed" : "";
 
   const list = $("modalPrices");
   list.innerHTML = "";
@@ -610,13 +804,29 @@ map = new maplibregl.Map({
   style: MAP_STYLE,
   center: [DEFAULT_CENTER.lng, DEFAULT_CENTER.lat],
   zoom: 11,
+  dragRotate: false,
+  pitchWithRotate: false,
+  touchPitch: false,
+  maxPitch: 0,
   attributionControl: { compact: true }
 });
-map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+map.touchZoomRotate.disableRotation(); // el mapa siempre mira al norte
+map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "bottom-right");
+
+// Por si acaso se gira igualmente (gestos, teclado), lo devolvemos al norte
+map.on("rotate", () => {
+  if (map.getBearing() !== 0) map.setBearing(0);
+});
 
 // Solo mostramos "Buscar en esta zona" cuando el usuario mueve el mapa
 map.on("moveend", (e) => {
   if (e.originalEvent) $("searchArea").classList.remove("hidden");
+});
+
+map.on("load", () => {
+  addAreaLayers();
+  refresh();
+  locate();
 });
 
 $("searchArea").addEventListener("click", () => {
@@ -634,7 +844,6 @@ $("modal").addEventListener("click", (e) => {
 
 buildFuelChips();
 loadData();
-map.on("load", locate);
 </script>
 </body>
 </html>
