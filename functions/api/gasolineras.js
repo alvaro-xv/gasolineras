@@ -65,6 +65,17 @@ export async function onRequest(context) {
     });
 
   } catch (err) {
+    if (cachedData) {
+      return new Response(JSON.stringify({
+        fechaActualizacion: new Date(lastFetchTime).toISOString(),
+        total: cachedData.length,
+        marcas: cachedBrands,
+        estaciones: cachedData,
+        stale: true
+      }), {
+        headers: { "Content-Type": "application/json;charset=UTF-8", "Cache-Control": "no-store" }
+      });
+    }
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" }
