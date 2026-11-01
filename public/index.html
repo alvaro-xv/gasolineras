@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Gasolineras cerca de mí</title>
+<meta name="theme-color" content="#1c1c1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gasolineras">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Gasolineras</title>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root {
@@ -20,14 +25,22 @@ html, body { margin: 0; height: 100%; }
 body {
   font-family: var(--font);
   color: var(--text);
-  background: #000;
+  background: #1d1d1f;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 button, select { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 
-#map { position: fixed; inset: 0; }
+/* El mapa ocupa toda la pantalla, también bajo la isla dinámica y la barra de Safari */
+#map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+}
 
 /* "Liquid glass": cristal translúcido con brillo en los bordes y desenfoque */
 .glass {
@@ -104,10 +117,44 @@ button, select { font: inherit; color: inherit; }
 }
 .chip[aria-pressed="true"] { background: var(--blue); color: #fff; }
 
+.extremes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 24px;
+}
+.extreme {
+  border: 0;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 18px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.extreme .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); }
+.extreme .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.extreme.cheap .v { color: var(--green); }
+.extreme.exp .v { color: var(--red); }
+.extreme .s { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.notice {
+  align-self: center;
+  padding: 7px 14px;
+  font-size: 12px;
+  color: var(--text);
+  border-radius: 999px;
+}
+
 .pill {
   position: fixed;
   left: 50%;
-  bottom: 32px;
+  bottom: max(32px, env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 6;
   padding: 13px 22px;
@@ -127,7 +174,7 @@ button, select { font: inherit; color: inherit; }
 .round {
   position: fixed;
   left: 16px;
-  bottom: 32px;
+  bottom: max(32px, env(safe-area-inset-bottom));
   z-index: 6;
   width: 48px;
   height: 48px;
@@ -214,6 +261,8 @@ button, select { font: inherit; color: inherit; }
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  padding: 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
 }
 .sheet {
   background: rgba(28, 28, 30, 0.9);
@@ -223,14 +272,13 @@ button, select { font: inherit; color: inherit; }
   max-width: 480px;
   max-height: 82vh;
   overflow-y: auto;
-  border-radius: 28px 28px 0 0;
+  border-radius: 28px;
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 @media (min-width: 640px) {
   .modal { align-items: center; }
-  .sheet { border-radius: 28px; }
 }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .sheet-title { font-size: 19px; font-weight: 700; margin: 0; }
@@ -290,10 +338,9 @@ button, select { font: inherit; color: inherit; }
   border-radius: 16px;
   font-size: 14px;
   font-weight: 600;
-  color: #fff;
-  background: var(--blue);
 }
-.links a.apple { background: rgba(255, 255, 255, 0.14); }
+.links a.google { background: #ffffff; color: #1c1c1e; }
+.links a.apple { background: var(--blue); color: #fff; }
 </style>
 </head>
 <body>
@@ -303,14 +350,27 @@ button, select { font: inherit; color: inherit; }
 <div class="top">
   <div class="glass header">
     <div>
-      <div class="title">⛽ Gasolineras</div>
-      <div class="status" id="status">Buscando tu ubicación…</div>
+      <div class="title">Gasolineras</div>
+      <div class="status" id="status">Cargando…</div>
     </div>
     <select id="brandSelect" class="brand-select" aria-label="Marca">
       <option value="ALL">Todas las marcas</option>
     </select>
   </div>
   <div class="glass fuels" id="fuelChips" role="group" aria-label="Combustible"></div>
+  <div class="glass extremes hidden" id="extremes">
+    <button class="extreme cheap" id="cheapBtn" type="button">
+      <span class="k">Más barata</span>
+      <span class="v" id="cheapPrice"></span>
+      <span class="s" id="cheapInfo"></span>
+    </button>
+    <button class="extreme exp" id="expBtn" type="button">
+      <span class="k">Más cara</span>
+      <span class="v" id="expPrice"></span>
+      <span class="s" id="expInfo"></span>
+    </button>
+  </div>
+  <div class="glass notice hidden" id="notice"></div>
 </div>
 
 <button id="searchArea" class="glass pill hidden" type="button">Buscar en esta zona</button>
@@ -340,7 +400,7 @@ button, select { font: inherit; color: inherit; }
     <div class="prices-title">Precios</div>
     <div class="prices" id="modalPrices"></div>
     <div class="links">
-      <a id="btnGoogle" href="#" target="_blank" rel="noopener">Google Maps</a>
+      <a id="btnGoogle" class="google" href="#" target="_blank" rel="noopener">Google Maps</a>
       <a id="btnApple" class="apple" href="#" target="_blank" rel="noopener">Apple Maps</a>
     </div>
   </div>
@@ -397,6 +457,8 @@ let userLoc = null;      // { lat, lng }
 let view = { mode: "radius", center: null }; // "radius" o "bounds"
 let markers = [];
 let userMarker = null;
+let extremeStations = { cheap: null, exp: null };
+let noticeTimer = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -420,7 +482,7 @@ function formatUpdated(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleString("es-ES", {
     day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
-  });
+  }).replace(",", "");
 }
 
 function normalizeBrand(raw) {
@@ -435,6 +497,19 @@ function normalizeBrand(raw) {
 
 function setStatus(text) {
   $("status").textContent = text;
+}
+
+function showNotice(text, ms = 4000) {
+  const el = $("notice");
+  el.textContent = text;
+  el.classList.remove("hidden");
+  clearTimeout(noticeTimer);
+  if (ms) noticeTimer = setTimeout(() => el.classList.add("hidden"), ms);
+}
+
+function hideNotice() {
+  clearTimeout(noticeTimer);
+  $("notice").classList.add("hidden");
 }
 
 // ---------- Horarios ----------
@@ -604,14 +679,35 @@ function makePin(station, price, cls) {
   return wrap;
 }
 
+function renderExtremes(entries) {
+  const box = $("extremes");
+  if (!entries.length) {
+    box.classList.add("hidden");
+    extremeStations = { cheap: null, exp: null };
+    return;
+  }
+  let cheap = entries[0].s;
+  let exp = entries[0].s;
+  entries.forEach(({ s }) => {
+    if (s.precios[fuel] < cheap.precios[fuel]) cheap = s;
+    if (s.precios[fuel] > exp.precios[fuel]) exp = s;
+  });
+  extremeStations = { cheap, exp };
+
+  $("cheapPrice").textContent = fmtPrice(cheap.precios[fuel]);
+  $("cheapInfo").textContent = `${cheap.marca} · ${cheap.municipio}`;
+  $("expPrice").textContent = fmtPrice(exp.precios[fuel]);
+  $("expInfo").textContent = `${exp.marca} · ${exp.municipio}`;
+  box.classList.remove("hidden");
+}
+
 function renderEntries(entries) {
   clearMarkers();
-  const shown = entries.slice(0, MAX_PINS);
-  const prices = shown.map((x) => x.s.precios[fuel]);
+  const prices = entries.map((x) => x.s.precios[fuel]);
   const min = prices.length ? Math.min(...prices) : null;
   const max = prices.length ? Math.max(...prices) : null;
 
-  shown.forEach(({ s }) => {
+  entries.slice(0, MAX_PINS).forEach(({ s }) => {
     const price = s.precios[fuel];
     let cls = "";
     if (price === min) cls = "cheap";
@@ -624,10 +720,13 @@ function renderEntries(entries) {
     );
   });
 
+  renderExtremes(entries);
+
   const total = entries.length;
-  const parts = [total === 0 ? "Sin estaciones aquí" : `${total} estaciones`];
+  const parts = [];
+  if (updatedAt) parts.push(`Últ. act. ${formatUpdated(updatedAt)}`);
+  parts.push(total === 0 ? "Sin estaciones aquí" : `${total} estaciones`);
   if (total > MAX_PINS) parts.push(`mostrando ${MAX_PINS} más cercanas`);
-  if (updatedAt) parts.push(`precios del ${formatUpdated(updatedAt)}`);
   setStatus(parts.join(" · "));
 }
 
@@ -719,15 +818,18 @@ function goToUser(loc, zoom = 12) {
 
 function locate() {
   if (!navigator.geolocation) {
-    setStatus("Tu navegador no permite la ubicación: mostrando Madrid");
+    showNotice("Tu navegador no permite la ubicación: mostrando Madrid");
     goToUser(DEFAULT_CENTER);
     return;
   }
-  setStatus("Buscando tu ubicación…");
+  showNotice("Buscando tu ubicación…", 0);
   navigator.geolocation.getCurrentPosition(
-    (pos) => goToUser({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+    (pos) => {
+      hideNotice();
+      goToUser({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    },
     () => {
-      setStatus("Ubicación no disponible: mostrando Madrid");
+      showNotice("Ubicación no disponible: mostrando Madrid");
       goToUser(DEFAULT_CENTER);
     },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
@@ -811,7 +913,11 @@ map = new maplibregl.Map({
   attributionControl: { compact: true }
 });
 map.touchZoomRotate.disableRotation(); // el mapa siempre mira al norte
-map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "bottom-right");
+
+// En móvil no ponemos botones de zoom: se hace con los dedos
+if (!window.matchMedia("(pointer: coarse)").matches) {
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "bottom-right");
+}
 
 // Por si acaso se gira igualmente (gestos, teclado), lo devolvemos al norte
 map.on("rotate", () => {
@@ -833,6 +939,13 @@ $("searchArea").addEventListener("click", () => {
   view = { mode: "bounds", center: null };
   $("searchArea").classList.add("hidden");
   refresh();
+});
+
+$("cheapBtn").addEventListener("click", () => {
+  if (extremeStations.cheap) openModal(extremeStations.cheap);
+});
+$("expBtn").addEventListener("click", () => {
+  if (extremeStations.exp) openModal(extremeStations.exp);
 });
 
 $("locate").addEventListener("click", locate);
