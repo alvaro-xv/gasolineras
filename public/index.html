@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#1c1c1e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Gasolineras">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Gasolineras</title>
 <link rel="icon" type="image/png" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -19,22 +20,36 @@
   --green: #30d158;
   --red: #ff453a;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  /* Altura real de la pantalla; la calcula el script (en iPhone puede ser mayor que 100%) */
+  --app-h: 100%;
+  /* Separación extra bajo la barra de estado en la app de inicio de iPhone (ver script) */
+  --top-extra: 0px;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+
+/* La página no se desplaza nunca: todo va colocado sobre el mapa */
+html, body {
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #1c1c1e;
+}
+html { height: var(--app-h); }
 body {
+  position: relative;
+  height: var(--app-h);
   font-family: var(--font);
   color: var(--text);
-  background: #1c1c1e;
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 button, select { font: inherit; color: inherit; }
 .hidden { display: none !important; }
 
-/* El mapa ocupa toda la zona de la web: desde debajo de la barra de estado hasta el borde inferior */
+/* Todo se coloca con position: absolute sobre el body, que mide lo mismo que la pantalla.
+   Con position: fixed, iOS recorta los elementos a una zona más baja que la pantalla
+   en las apps de inicio, y eso dejaba la franja de abajo. */
 #map {
-  position: fixed;
+  position: absolute;
   inset: 0;
 }
 
@@ -51,9 +66,12 @@ button, select { font: inherit; color: inherit; }
   border-radius: 26px;
 }
 
+/* Bloque superior: cabecera, selectores y precios.
+   En la app de inicio de iPhone baja lo justo para quedar fuera del desenfoque
+   que iOS pone bajo la barra de estado (el mapa sí sigue llegando hasta arriba). */
 .top {
-  position: fixed;
-  top: calc(var(--appbar-h, 56px) + 8px);
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px + var(--top-extra));
   left: 12px;
   right: 12px;
   z-index: 5;
@@ -64,22 +82,13 @@ button, select { font: inherit; color: inherit; }
 }
 .top > * { pointer-events: auto; }
 
-/* Barra superior fija, opaca y de lado a lado, pegada al borde de arriba.
-   iOS 26 pone un desenfoque bajo la barra de estado en las apps de inicio; WebKit no lo aplica
-   cuando hay una caja fija opaca de un solo color tocando ese borde. */
-.appbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 6;
-  background: #1c1c1e;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+.header {
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  touch-action: none;
 }
 .count { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; white-space: nowrap; }
 .meta { text-align: right; min-width: 0; }
@@ -91,6 +100,7 @@ button, select { font: inherit; color: inherit; }
   gap: 8px;
   padding: 6px;
   border-radius: 999px;
+  touch-action: none;
 }
 .ctl {
   flex: 1 1 0;
@@ -130,6 +140,7 @@ button, select { font: inherit; color: inherit; }
   gap: 6px;
   padding: 6px;
   border-radius: 22px;
+  touch-action: none;
 }
 .extreme {
   border: 0;
@@ -191,7 +202,7 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 .row-dist { font-size: 11px; color: var(--muted); }
 
 .pill {
-  position: fixed;
+  position: absolute;
   left: 50%;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
   transform: translateX(-50%);
@@ -203,15 +214,14 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  background: rgba(10, 132, 255, 0.85);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(10, 132, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 12px 30px rgba(0, 0, 0, 0.4);
+  touch-action: none;
 }
 
 .round {
-  position: fixed;
+  position: absolute;
   left: 16px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
   z-index: 6;
@@ -225,6 +235,7 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
   align-items: center;
   justify-content: center;
   padding: 0;
+  touch-action: none;
 }
 
 /* Cada pin va dentro de un contenedor que MapLibre posiciona; no le ponemos transiciones */
@@ -244,6 +255,12 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 }
 .pin.cheap { background: rgba(48, 209, 88, 0.92); border-color: rgba(255, 255, 255, 0.4); }
 .pin.exp { background: rgba(255, 69, 58, 0.92); border-color: rgba(255, 255, 255, 0.4); }
+/* Pulso para señalar la gasolinera al centrarla */
+.pin.focus { animation: pulse 1.2s ease-out 3; }
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.75), 0 4px 12px rgba(0, 0, 0, 0.4); }
+  100% { box-shadow: 0 0 0 16px rgba(255, 255, 255, 0), 0 4px 12px rgba(0, 0, 0, 0.4); }
+}
 
 .me {
   width: 16px;
@@ -255,13 +272,14 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 }
 
 .loader {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.35);
+  touch-action: none;
 }
 .loader-card {
   padding: 22px 26px;
@@ -293,7 +311,7 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 }
 
 .modal {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 30;
   background: rgba(0, 0, 0, 0.45);
@@ -301,23 +319,20 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
   align-items: flex-end;
   justify-content: center;
   padding: 12px;
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  touch-action: none;
 }
 .sheet {
-  background: rgba(28, 28, 30, 0.9);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
+  background: rgba(28, 28, 30, 0.96);
   width: 100%;
   max-width: 480px;
-  max-height: 82vh;
+  max-height: 82%;
   overflow-y: auto;
   border-radius: 28px;
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-@media (min-width: 640px) {
-  .modal { align-items: center; }
+  touch-action: pan-y;
 }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .sheet-title { font-size: 19px; font-weight: 700; margin: 0; }
@@ -380,22 +395,14 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 }
 .links a.google { background: #ffffff; color: #1c1c1e; }
 .links a.apple { background: var(--blue); color: #fff; }
+
 /* Escritorio: panel a la izquierda con la lista y el mapa a pantalla completa */
 @media (min-width: 900px) {
-  .appbar {
-    top: 12px;
-    left: 12px;
-    right: auto;
-    width: 380px;
-    padding: 10px 14px;
-    border-radius: 26px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 40px rgba(0, 0, 0, 0.45);
-  }
-  .top { top: calc(12px + var(--appbar-h, 56px) + 8px); right: auto; bottom: 12px; width: 380px; }
+  .top { top: 12px; left: 12px; right: auto; bottom: 12px; width: 380px; }
   .list { display: flex; }
   .round { left: 404px; }
-  .pill { left: calc(50% + 190px); }
+  .pill { left: calc(50% + 196px); }
+  .modal { align-items: center; }
 }
 </style>
 </head>
@@ -403,15 +410,15 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 
 <div id="map"></div>
 
-<header class="appbar" id="appbar">
-  <div class="count" id="count">Gasolineras</div>
-  <div class="meta">
-    <div class="status" id="status">Cargando…</div>
-    <div class="credit">© OpenStreetMap · © CARTO</div>
-  </div>
-</header>
-
 <div class="top">
+  <div class="glass header">
+    <div class="count" id="count">Gasolineras</div>
+    <div class="meta">
+      <div class="status" id="status">Cargando…</div>
+      <div class="credit">© OpenStreetMap · © CARTO</div>
+    </div>
+  </div>
+
   <div class="glass controls">
     <label class="ctl">
       <span class="icon" aria-hidden="true">
@@ -442,7 +449,7 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
   <div class="glass list" id="list"></div>
 </div>
 
-<button id="searchArea" class="glass pill hidden" type="button">Buscar en esta zona</button>
+<button id="searchArea" class="pill hidden" type="button">Buscar en esta zona</button>
 <button id="locate" class="glass round" type="button" aria-label="Centrar en mi ubicación">◎</button>
 
 <div id="loader" class="loader">
@@ -482,6 +489,8 @@ const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.j
 const RADIUS_KM = 15;
 const MAX_PINS = 300;
 const DEFAULT_CENTER = { lat: 40.4168, lng: -3.7038 }; // Madrid
+// Alto del desenfoque que iOS 26 pone bajo la barra de estado en las apps de inicio
+const IOS_EDGE_BLUR = 56;
 
 const FUEL_NAMES = {
   gasolina95: "Gasolina 95 E5",
@@ -517,19 +526,44 @@ const OTHERS = "Otros";
 const DAY_IDX = { L: 0, M: 1, X: 2, J: 3, V: 4, S: 5, D: 6 };
 const DAY_NAMES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 
-let map;
-let stations = [];       // estaciones con marca normalizada
-let updatedAt = null;
-let fuel = readFuelCookie() || "gasolina95";
-let brandFilter = "ALL";
-let userLoc = null;      // { lat, lng }
-let view = { mode: "radius", center: null }; // "radius" o "bounds"
-let markers = [];
-let userMarker = null;
-let extremeStations = { cheap: null, exp: null };
-let noticeTimer = null;
-
 const $ = (id) => document.getElementById(id);
+
+// ---------- Tamaño de pantalla ----------
+
+// En la app de inicio de iPhone (con la barra de estado translúcida), iOS dice que la
+// pantalla mide la altura real menos la barra de estado, pero dibuja la página desde arriba
+// del todo. Por eso quedaba una franja abajo. Aquí medimos la altura real y se la damos
+// al body, y además bajamos el bloque superior fuera del desenfoque de la barra de estado.
+function safeAreaTop() {
+  const probe = document.createElement("div");
+  probe.style.cssText = "position:absolute;top:0;left:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none";
+  document.body.appendChild(probe);
+  const value = probe.offsetHeight;
+  probe.remove();
+  return value;
+}
+
+function fitViewport() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const standalone = window.navigator.standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches;
+  const iosHomeApp = ios && standalone && safeAreaTop() > 0;
+
+  let height = window.innerHeight;
+  if (iosHomeApp) {
+    const landscape = window.innerWidth > window.innerHeight;
+    const screenHeight = landscape
+      ? Math.min(screen.width, screen.height)
+      : Math.max(screen.width, screen.height);
+    height = Math.max(height, screenHeight);
+  }
+
+  const root = document.documentElement.style;
+  root.setProperty("--app-h", height + "px");
+  root.setProperty("--top-extra", iosHomeApp ? IOS_EDGE_BLUR + "px" : "0px");
+  if (map) map.resize();
+}
 
 // Recordamos el último combustible elegido durante un año
 function readFuelCookie() {
@@ -547,6 +581,19 @@ function saveFuelCookie() {
   } catch (e) { /* sin cookies: no pasa nada */ }
 }
 
+let map = null;
+let stations = [];       // estaciones con marca normalizada
+let updatedAt = null;
+let fuel = readFuelCookie() || "gasolina95";
+let brandFilter = "ALL";
+let userLoc = null;      // { lat, lng }
+let view = { mode: "radius", center: null }; // "radius" o "bounds"
+let markers = [];
+let pinById = new Map(); // id de estación -> botón del pin
+let userMarker = null;
+let extremeStations = { cheap: null, exp: null };
+let noticeTimer = null;
+
 // ---------- Utilidades ----------
 
 function distKm(lat1, lon1, lat2, lon2) {
@@ -561,10 +608,14 @@ function distKm(lat1, lon1, lat2, lon2) {
 
 // 1,09⁹ €: dos decimales grandes y el tercero pequeño arriba (sin redondear, para no engañar)
 function priceHtml(p) {
-  const s = p.toFixed(3);            // "1.099"
-  const main = s.slice(0, -1).replace(".", ",");  // "1,09"
-  const last = s.slice(-1);          // "9"
+  const s = p.toFixed(3);                          // "1.099"
+  const main = s.slice(0, -1).replace(".", ",");   // "1,09"
+  const last = s.slice(-1);                        // "9"
   return `${main}<sup>${last}</sup>&nbsp;€`;
+}
+
+function fmtPlain(p) {
+  return p.toFixed(3).replace(".", ",") + " €";
 }
 
 function formatUpdated(iso) {
@@ -596,6 +647,10 @@ function showNotice(text, ms = 4000) {
 function hideNotice() {
   clearTimeout(noticeTimer);
   $("notice").classList.add("hidden");
+}
+
+function isDesktop() {
+  return window.matchMedia("(min-width: 900px)").matches;
 }
 
 // ---------- Horarios ----------
@@ -705,11 +760,12 @@ function buildBrandSelect() {
   sel.add(new Option("Todas las marcas", "ALL"));
   names.filter((n) => present.has(n)).forEach((n) => sel.add(new Option(n, n)));
   sel.value = brandFilter;
-  sel.addEventListener("change", () => {
-    brandFilter = sel.value;
-    refresh();
-  });
 }
+
+$("brandSelect").addEventListener("change", (e) => {
+  brandFilter = e.target.value;
+  refresh();
+});
 
 // ---------- Filtrado y pintado ----------
 
@@ -738,6 +794,7 @@ function stationsInView() {
 function clearMarkers() {
   markers.forEach((m) => m.remove());
   markers = [];
+  pinById = new Map();
 }
 
 function makePin(station, price, cls) {
@@ -753,11 +810,8 @@ function makePin(station, price, cls) {
     openModal(station);
   });
   wrap.appendChild(btn);
+  pinById.set(station.id, btn);
   return wrap;
-}
-
-function fmtPlain(p) {
-  return p.toFixed(3).replace(".", ",") + " €";
 }
 
 function renderExtremes(entries) {
@@ -782,7 +836,7 @@ function renderExtremes(entries) {
   box.classList.remove("hidden");
 }
 
-// Lista lateral (escritorio): las 80 más baratas de la zona visible
+// Lista lateral (escritorio): las 80 más baratas de la zona
 function renderList(entries) {
   const box = $("list");
   box.innerHTML = "";
@@ -837,14 +891,13 @@ function renderEntries(entries) {
   });
 
   renderExtremes(entries);
-
   renderList(entries);
   $("count").textContent = `Gasolineras: ${entries.length}`;
   $("status").textContent = updatedAt ? `Últ. act. ${formatUpdated(updatedAt)}` : "";
 }
 
 function refresh() {
-  if (!stations.length) return;
+  if (!stations.length || !map) return;
   let entries;
   if (view.mode === "radius" && view.center) {
     entries = stationsNear(view.center, RADIUS_KM);
@@ -854,6 +907,26 @@ function refresh() {
     drawArea(viewPolygon());
   }
   renderEntries(entries);
+}
+
+// Centra el mapa en una gasolinera.
+// Móvil: en el centro exacto de la pantalla, con un pulso en su pin (al tocar el pin se abre el detalle).
+// Escritorio: en el centro de la zona del mapa que no tapa el panel, y abre el detalle.
+function focusStation(s) {
+  if (!s) return;
+  const desktop = isDesktop();
+  map.flyTo({
+    center: [s.lon, s.lat],
+    zoom: Math.max(map.getZoom(), 14),
+    offset: desktop ? [196, 0] : [0, 0]
+  });
+  const pin = pinById.get(s.id);
+  if (pin) {
+    pin.classList.remove("focus");
+    void pin.offsetWidth; // reinicia la animación
+    pin.classList.add("focus");
+  }
+  if (desktop) openModal(s);
 }
 
 // ---------- Área de búsqueda ----------
@@ -1012,26 +1085,9 @@ function closeModal() {
   $("modal").classList.add("hidden");
 }
 
-// Centra el mapa en la gasolinera y abre su detalle.
-// En móvil la deja en la parte de arriba para que no quede tapada por la hoja;
-// en escritorio, en el centro de la zona del mapa que no cubre el panel.
-function focusStation(s) {
-  if (!s) return;
-  const desktop = window.matchMedia("(min-width: 900px)").matches;
-  map.flyTo({
-    center: [s.lon, s.lat],
-    zoom: Math.max(map.getZoom(), 14),
-    offset: desktop ? [196, 0] : [0, -140]
-  });
-  openModal(s);
-}
-
-// Guarda la altura real de la barra superior para colocar debajo los selectores
-function syncAppbar() {
-  document.documentElement.style.setProperty("--appbar-h", $("appbar").offsetHeight + "px");
-}
-
 // ---------- Arranque ----------
+
+fitViewport(); // antes de crear el mapa, para que nazca con el tamaño correcto
 
 map = new maplibregl.Map({
   container: "map",
@@ -1066,15 +1122,12 @@ map.on("load", () => {
   addAreaLayers();
   refresh();
   locate();
-  map.resize();
 });
 
-// Recalcula el tamaño del mapa al girar el móvil o al cambiar la barra del navegador
-window.addEventListener("resize", () => {
-  syncAppbar();
-  map.resize();
-});
-window.addEventListener("orientationchange", () => setTimeout(() => map.resize(), 300));
+// Recalcula el tamaño al girar el móvil o al cambiar la barra del navegador
+window.addEventListener("resize", fitViewport);
+window.addEventListener("orientationchange", () => setTimeout(fitViewport, 300));
+if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
 
 $("searchArea").addEventListener("click", () => {
   view = { mode: "bounds", center: null };
@@ -1092,8 +1145,6 @@ $("modal").addEventListener("click", (e) => {
   if (e.target.id === "modal") closeModal();
 });
 
-syncAppbar();
-if (window.ResizeObserver) new ResizeObserver(syncAppbar).observe($("appbar"));
 buildFuelSelect();
 loadData();
 </script>
