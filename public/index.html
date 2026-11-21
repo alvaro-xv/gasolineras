@@ -222,7 +222,7 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 
 .round {
   position: absolute;
-  left: 16px;
+  right: 16px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
   z-index: 6;
   width: 48px;
@@ -397,10 +397,78 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 .links a.apple { background: var(--blue); color: #fff; }
 
 /* Escritorio: panel a la izquierda con la lista y el mapa a pantalla completa */
+/* Botón de información: abajo a la izquierda (el de ubicación va a la derecha) */
+.round.info-btn {
+  right: auto;
+  left: 16px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 22px;
+}
+
+/* Modal de información */
+.info-sheet { max-width: 560px; }
+.info-sheet h3 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin: 22px 0 8px;
+}
+.info-sheet p, .info-sheet li { font-size: 14px; line-height: 1.45; margin: 0 0 8px; }
+.info-sheet ul { margin: 0; padding-left: 18px; }
+.info-sheet a { color: var(--blue); }
+.legend {
+  height: 10px;
+  border-radius: 999px;
+  margin: 10px 0 4px;
+  background: linear-gradient(90deg, rgb(48, 209, 88), rgb(58, 58, 62) 50%, rgb(255, 69, 58));
+}
+.legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.facts { display: flex; flex-direction: column; gap: 6px; }
+.fact-fuel { font-size: 13px; font-weight: 700; margin: 10px 0 2px; }
+.fact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  padding: 9px 11px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+}
+.fact .tag { font-size: 11px; font-weight: 700; min-width: 48px; }
+.fact.cheap .tag { color: var(--green); }
+.fact.exp .tag { color: var(--red); }
+.fact .fp { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fact .fw { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chip {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+}
+.chip.active { background: var(--blue); color: #fff; }
+.chart { width: 100%; height: auto; display: block; }
+.chart-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.avg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.avg-grid div { background: rgba(255, 255, 255, 0.07); border-radius: 12px; padding: 8px 10px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.avg-grid b { font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
+
 @media (min-width: 900px) {
   .top { top: 12px; left: 12px; right: auto; bottom: 12px; width: 380px; }
   .list { display: flex; }
-  .round { left: 404px; }
+  .round { left: 464px; right: auto; }
+  .round.info-btn { left: 404px; }
   .pill { left: calc(50% + 196px); }
   .modal { align-items: center; }
 }
@@ -451,6 +519,51 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 
 <button id="searchArea" class="pill hidden" type="button">Buscar en esta zona</button>
 <button id="locate" class="glass round" type="button" aria-label="Centrar en mi ubicación">◎</button>
+<button id="infoBtn" class="glass round info-btn" type="button" aria-label="Información">i</button>
+
+<div id="infoModal" class="modal hidden">
+  <div class="sheet info-sheet" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+    <div class="sheet-head">
+      <div>
+        <h2 class="sheet-title" id="infoTitle">Sobre este mapa</h2>
+        <div class="sheet-sub" id="infoUpdated"></div>
+      </div>
+      <button class="close" id="infoClose" type="button" aria-label="Cerrar">×</button>
+    </div>
+
+    <h3>De dónde salen los datos</h3>
+    <p>Los precios son los que publica el <b>Ministerio para la Transición Ecológica y el Reto Demográfico</b> en su
+      <a href="https://geoportalgasolineras.es" target="_blank" rel="noopener">Geoportal de Gasolineras</a>.
+      Las propias gasolineras están obligadas a comunicarle sus precios, así que la fuente es oficial y cubre todas las de España.</p>
+    <p>Se descargan <b>tres veces al día</b>: sobre las 00:00, las 08:00 y las 16:00 en invierno (una hora más tarde en verano).
+      Puede haber algún desfase si una gasolinera cambia el precio entre medias. Todos los precios son en euros por litro, con impuestos.</p>
+
+    <h3>Qué estás viendo</h3>
+    <ul>
+      <li>Al abrir, se muestran todas las gasolineras en <b>15 km</b> alrededor de tu ubicación (o de Madrid si no la compartes).</li>
+      <li>Si mueves el mapa y pulsas <b>«Buscar en esta zona»</b>, se muestran todas las que hay en la parte del mapa que ves.</li>
+      <li>Los selectores de arriba filtran por <b>combustible</b> y por <b>marca</b>. El combustible elegido se recuerda para la próxima vez.</li>
+      <li>Las dos tarjetas de arriba son la <b>más barata</b> y la <b>más cara</b> de la zona: púlsalas para ir a ellas.</li>
+      <li>Cuando hay muchas gasolineras en pantalla se dibujan como <b>puntos de color</b> para que el mapa vaya fluido. Al acercarte aparecen los precios.</li>
+    </ul>
+
+    <h3>Qué significan los colores</h3>
+    <p>Se calcula el <b>precio mediano</b> de las gasolineras de la zona (el que deja la mitad por debajo y la mitad por encima).
+      Ese precio va en gris. Cuanto más barata es una gasolinera respecto a la mediana, más verde; cuanto más cara, más roja.
+      La más barata de la zona es verde del todo y la más cara, roja del todo.</p>
+    <div class="legend"></div>
+    <div class="legend-labels"><span>Más barata</span><span>Mediana</span><span>Más cara</span></div>
+
+    <h3>Datos curiosos de toda España</h3>
+    <div class="facts" id="factsOverall"></div>
+    <div class="facts" id="factsByFuel"></div>
+
+    <h3>Evolución del precio medio en España</h3>
+    <div class="chips" id="chartChips"></div>
+    <div id="chartBox"></div>
+    <div class="avg-grid" id="avgGrid"></div>
+  </div>
+</div>
 
 <div id="loader" class="loader">
   <div class="glass loader-card">
@@ -487,9 +600,12 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 const API_URL = "/api/gasolineras";
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const RADIUS_KM = 15;
+// Si en pantalla hay más gasolineras que esto, se pintan como puntos de color (rápido)
+// en lugar de pines con precio. Al acercarte vuelven los pines.
+const PIN_LIMIT = 250;
 const DEFAULT_CENTER = { lat: 40.4168, lng: -3.7038 }; // Madrid
 // Alto del desenfoque que iOS 26 pone bajo la barra de estado en las apps de inicio
-const IOS_EDGE_BLUR = 46;
+const IOS_EDGE_BLUR = 56;
 
 const FUEL_NAMES = {
   gasolina95: "Gasolina 95 E5",
@@ -589,6 +705,11 @@ let userLoc = null;      // { lat, lng }
 let view = { mode: "radius", center: null }; // "radius" o "bounds"
 let markers = [];
 let pinById = new Map(); // id de estación -> botón del pin
+let stationById = new Map(); // id de estación -> estación
+let currentEntries = [];  // resultado actual (zona o radio)
+let currentScale = null;  // { min, med, max } del resultado actual
+let pendingPulseId = null; // gasolinera a señalar cuando se pinten los pines
+let dotsHintShown = false;
 let userMarker = null;
 let extremeStations = { cheap: null, exp: null };
 let noticeTimer = null;
@@ -818,6 +939,7 @@ function makePin(station, price, cls) {
 // (verde puro en la más barata) y por encima rojo (rojo puro en la más cara).
 const COLOR_BASE  = [28, 28, 30, 0.82];   // fondo normal de los pines
 const COLOR_ROW   = [255, 255, 255, 0.05]; // fondo normal de las filas de la lista
+const COLOR_DOT   = [174, 174, 178, 0.95]; // puntos del mapa alejado (gris claro para que se vean sobre el mapa oscuro)
 const COLOR_CHEAP = [48, 209, 88, 0.92];  // verde
 const COLOR_EXP   = [255, 69, 58, 0.92];  // rojo
 
@@ -901,19 +1023,63 @@ function renderList(entries, scale) {
 }
 
 function renderEntries(entries) {
-  clearMarkers();
   const prices = entries.map((x) => x.s.precios[fuel]);
   const min = prices.length ? Math.min(...prices) : null;
   const max = prices.length ? Math.max(...prices) : null;
-  const scale = { min, med: median(prices), max };
+  currentScale = { min, med: median(prices), max };
+  currentEntries = entries;
 
-  entries.forEach(({ s }) => {
+  updateDots();
+  updatePins();
+  renderExtremes(entries);
+  // La lista solo se ve en escritorio; en móvil no la construimos para no gastar memoria
+  if (isDesktop()) renderList(entries, currentScale);
+  else $("list").innerHTML = "";
+  $("count").textContent = `Gasolineras: ${entries.length}`;
+  $("status").textContent = updatedAt ? `Últ. act. ${formatUpdated(updatedAt)}` : "";
+}
+
+// Puntos de color (capa del propio mapa, aguanta miles sin problema)
+function updateDots() {
+  const src = map && map.getSource("stations");
+  if (!src) return;
+  src.setData({
+    type: "FeatureCollection",
+    features: currentEntries.map(({ s }) => ({
+      type: "Feature",
+      properties: { id: s.id, color: priceColor(s.precios[fuel], currentScale, COLOR_DOT) },
+      geometry: { type: "Point", coordinates: [s.lon, s.lat] }
+    }))
+  });
+}
+
+// Pines con precio: solo para las gasolineras que están en pantalla y si no son demasiadas.
+// Se recalcula cada vez que el mapa deja de moverse.
+function updatePins() {
+  if (!map) return;
+  clearMarkers();
+  const b = map.getBounds();
+  const visible = currentEntries.filter(({ s }) => b.contains([s.lon, s.lat]));
+  const showPins = visible.length <= PIN_LIMIT;
+  if (map.getLayer("stations-dots")) {
+    map.setLayoutProperty("stations-dots", "visibility", showPins ? "none" : "visible");
+  }
+  if (!showPins) {
+    if (!dotsHintShown) {
+      dotsHintShown = true;
+      showNotice("Acércate para ver los precios de cada gasolinera");
+    }
+    return;
+  }
+
+  const { min, max } = currentScale;
+  visible.forEach(({ s }) => {
     const price = s.precios[fuel];
     let cls = "";
     if (price === min) cls = "cheap";
     else if (price === max && max !== min) cls = "exp";
     const el = makePin(s, price, cls);
-    el.firstChild.style.background = priceColor(price, scale);
+    el.firstChild.style.background = priceColor(price, currentScale);
     markers.push(
       new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([s.lon, s.lat])
@@ -921,10 +1087,13 @@ function renderEntries(entries) {
     );
   });
 
-  renderExtremes(entries);
-  renderList(entries, scale);
-  $("count").textContent = `Gasolineras: ${entries.length}`;
-  $("status").textContent = updatedAt ? `Últ. act. ${formatUpdated(updatedAt)}` : "";
+  if (pendingPulseId) {
+    const pin = pinById.get(pendingPulseId);
+    if (pin) {
+      pin.classList.add("focus");
+      pendingPulseId = null;
+    }
+  }
 }
 
 function refresh() {
@@ -951,12 +1120,8 @@ function focusStation(s) {
     zoom: Math.max(map.getZoom(), 14),
     offset: desktop ? [196, 0] : [0, 0]
   });
-  const pin = pinById.get(s.id);
-  if (pin) {
-    pin.classList.remove("focus");
-    void pin.offsetWidth; // reinicia la animación
-    pin.classList.add("focus");
-  }
+  // Los pines se vuelven a pintar al terminar el movimiento; el pulso se aplica entonces
+  pendingPulseId = s.id;
   if (desktop) openModal(s);
 }
 
@@ -1010,6 +1175,28 @@ function addAreaLayers() {
     source: "area",
     paint: { "line-color": "#0a84ff", "line-width": 1.5, "line-opacity": 0.9, "line-dasharray": [2, 2] }
   });
+
+  // Puntos de color para cuando hay demasiadas gasolineras en pantalla
+  map.addSource("stations", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({
+    id: "stations-dots",
+    type: "circle",
+    source: "stations",
+    layout: { visibility: "none" },
+    paint: {
+      "circle-color": ["get", "color"],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 2.5, 8, 4, 12, 7],
+      "circle-stroke-color": "rgba(0, 0, 0, 0.55)",
+      "circle-stroke-width": 0.6
+    }
+  });
+  map.on("click", "stations-dots", (e) => {
+    const f = e.features && e.features[0];
+    const st = f && stationById.get(f.properties.id);
+    if (st) openModal(st);
+  });
+  map.on("mouseenter", "stations-dots", () => { map.getCanvas().style.cursor = "pointer"; });
+  map.on("mouseleave", "stations-dots", () => { map.getCanvas().style.cursor = ""; });
 }
 
 // ---------- Ubicación ----------
@@ -1073,6 +1260,8 @@ async function loadData() {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
     stations = json.estaciones.map((s) => ({ ...s, marca: normalizeBrand(s.rotulo) }));
+    stationById = new Map(stations.map((s) => [s.id, s]));
+    statsCache = null;
     updatedAt = json.fechaActualizacion;
     buildBrandSelect();
     hideLoader();
@@ -1116,6 +1305,220 @@ function closeModal() {
   $("modal").classList.add("hidden");
 }
 
+// ---------- Información y datos curiosos ----------
+
+const HISTORY_URL = "/data/historico.json";
+let statsCache = null;   // estadísticas de toda España, se calculan una vez por carga
+let priceHistory = null;      // histórico de precios medios (se descarga al abrir la información)
+let chartFuel = null;
+
+// Más barata y más cara de cada combustible, media nacional y la más barata/cara "en conjunto".
+// "En conjunto": para cada gasolinera que vende al menos 2 combustibles, se compara cada precio
+// con la media nacional de ese combustible y se hace la media de esas comparaciones.
+function nationalStats() {
+  if (statsCache) return statsCache;
+  const perFuel = {};
+  Object.keys(FUEL_NAMES).forEach((f) => {
+    let min = null, max = null, sum = 0, n = 0;
+    stations.forEach((s) => {
+      const p = s.precios[f];
+      if (p === null || !(p > 0)) return;
+      n++;
+      sum += p;
+      if (!min || p < min.precios[f]) min = s;
+      if (!max || p > max.precios[f]) max = s;
+    });
+    if (n) perFuel[f] = { min, max, avg: sum / n, n };
+  });
+
+  let best = null, worst = null;
+  stations.forEach((s) => {
+    const fs = Object.keys(perFuel).filter((f) => s.precios[f] > 0);
+    if (fs.length < 2) return;
+    const idx = fs.reduce((acc, f) => acc + s.precios[f] / perFuel[f].avg, 0) / fs.length;
+    if (!best || idx < best.idx) best = { s, idx, n: fs.length };
+    if (!worst || idx > worst.idx) worst = { s, idx, n: fs.length };
+  });
+
+  statsCache = { perFuel, best, worst };
+  return statsCache;
+}
+
+function stationLabel(s) {
+  return [s.rotulo, s.municipio, s.provincia && s.provincia.charAt(0) + s.provincia.slice(1).toLowerCase()]
+    .filter(Boolean).join(" · ");
+}
+
+function factButton(cls, tag, priceText, s) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "fact " + cls;
+  const t = document.createElement("span");
+  t.className = "tag";
+  t.textContent = tag;
+  const p = document.createElement("span");
+  p.className = "fp";
+  p.innerHTML = priceText;
+  const w = document.createElement("span");
+  w.className = "fw";
+  w.textContent = stationLabel(s);
+  b.append(t, p, w);
+  b.addEventListener("click", () => goToStation(s));
+  return b;
+}
+
+// Lleva a una gasolinera de cualquier parte de España y abre su ficha
+function goToStation(s) {
+  closeInfo();
+  view = { mode: "bounds", center: null };
+  $("searchArea").classList.add("hidden");
+  map.once("moveend", refresh);
+  focusStation(s);
+  openModal(s);
+}
+
+function pct(idx) {
+  const v = Math.round(Math.abs(idx - 1) * 100);
+  return `${v} %`;
+}
+
+function renderFacts() {
+  const { perFuel, best, worst } = nationalStats();
+
+  const overall = $("factsOverall");
+  overall.innerHTML = "";
+  if (best && worst) {
+    const t = document.createElement("div");
+    t.className = "fact-fuel";
+    t.textContent = "En conjunto (todos los combustibles que vende)";
+    overall.append(
+      t,
+      factButton("cheap", "Barata", `${pct(best.idx)} menos`, best.s),
+      factButton("exp", "Cara", `${pct(worst.idx)} más`, worst.s)
+    );
+    const note = document.createElement("div");
+    note.className = "chart-note";
+    note.textContent = "Comparando cada precio con la media de España de ese combustible. Solo cuentan las que venden al menos dos.";
+    overall.appendChild(note);
+  }
+
+  const byFuel = $("factsByFuel");
+  byFuel.innerHTML = "";
+  Object.entries(perFuel).forEach(([f, d]) => {
+    const t = document.createElement("div");
+    t.className = "fact-fuel";
+    t.textContent = FUEL_NAMES[f];
+    byFuel.append(
+      t,
+      factButton("cheap", "Barata", priceHtml(d.min.precios[f]), d.min),
+      factButton("exp", "Cara", priceHtml(d.max.precios[f]), d.max)
+    );
+  });
+
+  const grid = $("avgGrid");
+  grid.innerHTML = "";
+  Object.entries(perFuel).forEach(([f, d]) => {
+    const box = document.createElement("div");
+    box.innerHTML = `<span>Media hoy · ${FUEL_NAMES[f]}</span><b>${priceHtml(d.avg)}</b>`;
+    grid.appendChild(box);
+  });
+}
+
+function shortDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+}
+
+// Gráfica de línea sencilla en SVG
+function chartSvg(points) {
+  const W = 320, H = 150, L = 40, R = 10, T = 10, B = 24;
+  const vals = points.map((p) => p.v);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (hi - lo < 0.01) { lo -= 0.01; hi += 0.01; }
+  const pad = (hi - lo) * 0.1;
+  lo -= pad; hi += pad;
+  const x = (i) => L + (points.length === 1 ? (W - L - R) / 2 : (i * (W - L - R)) / (points.length - 1));
+  const y = (v) => T + ((hi - v) * (H - T - B)) / (hi - lo);
+  const line = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(points.length - 1).toFixed(1)},${H - B} L${x(0).toFixed(1)},${H - B} Z`;
+  const fmt = (v) => v.toFixed(3).replace(".", ",");
+  const last = points[points.length - 1];
+  const grid = [hi - pad, (hi + lo) / 2, lo + pad].map((v) =>
+    `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,0.08)"/>` +
+    `<text x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end" font-size="10" fill="rgba(235,235,245,0.6)">${fmt(v)}</text>`
+  ).join("");
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolución del precio medio">
+    <defs><linearGradient id="cg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#0a84ff" stop-opacity="0.35"/><stop offset="1" stop-color="#0a84ff" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${grid}
+    ${points.length > 1 ? `<path d="${area}" fill="url(#cg)"/><path d="${line}" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linejoin="round"/>` : ""}
+    <circle cx="${x(points.length - 1)}" cy="${y(last.v)}" r="3.5" fill="#0a84ff" stroke="#fff" stroke-width="1.5"/>
+    <text x="${x(0)}" y="${H - 6}" text-anchor="${points.length > 1 ? "start" : "middle"}" font-size="10" fill="rgba(235,235,245,0.6)">${shortDate(points[0].fecha)}</text>
+    ${points.length > 1 ? `<text x="${W - R}" y="${H - 6}" text-anchor="end" font-size="10" fill="rgba(235,235,245,0.6)">${shortDate(last.fecha)}</text>` : ""}
+  </svg>`;
+}
+
+function renderChart() {
+  const box = $("chartBox");
+  const chips = $("chartChips");
+  if (!priceHistory) {
+    chips.innerHTML = "";
+    box.innerHTML = `<div class="chart-note">Cargando histórico…</div>`;
+    return;
+  }
+  const dias = priceHistory.dias || [];
+  const fuels = Object.keys(FUEL_NAMES).filter((f) => dias.some((d) => d.medias && d.medias[f] > 0));
+  if (!fuels.length) {
+    chips.innerHTML = "";
+    box.innerHTML = `<div class="chart-note">Todavía no hay histórico de precios.</div>`;
+    return;
+  }
+  if (!fuels.includes(chartFuel)) chartFuel = fuels.includes(fuel) ? fuel : fuels[0];
+
+  chips.innerHTML = "";
+  fuels.forEach((f) => {
+    const c = document.createElement("button");
+    c.type = "button";
+    c.className = "chip" + (f === chartFuel ? " active" : "");
+    c.textContent = FUEL_NAMES[f];
+    c.addEventListener("click", () => { chartFuel = f; renderChart(); });
+    chips.appendChild(c);
+  });
+
+  const points = dias
+    .filter((d) => d.medias && d.medias[chartFuel] > 0)
+    .map((d) => ({ fecha: d.fecha, v: d.medias[chartFuel] }));
+  let note = "Media de todas las gasolineras de España que venden este combustible, un punto por día.";
+  if (points.length === 1) note = "El histórico empezó a guardarse el " + shortDate(points[0].fecha) + ": la gráfica se irá completando con un punto cada día.";
+  box.innerHTML = chartSvg(points) + `<div class="chart-note">${note}</div>`;
+}
+
+async function loadHistory() {
+  if (priceHistory) return;
+  try {
+    const res = await fetch(HISTORY_URL, { cache: "no-cache" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    priceHistory = await res.json();
+  } catch (err) {
+    priceHistory = { dias: [] };
+  }
+  renderChart();
+}
+
+function openInfo() {
+  $("infoUpdated").textContent = updatedAt ? `Datos del ${formatUpdated(updatedAt)}` : "";
+  if (stations.length) renderFacts();
+  renderChart();
+  loadHistory();
+  $("infoModal").classList.remove("hidden");
+  $("infoModal").querySelector(".sheet").scrollTop = 0;
+}
+
+function closeInfo() {
+  $("infoModal").classList.add("hidden");
+}
+
 // ---------- Arranque ----------
 
 fitViewport(); // antes de crear el mapa, para que nazca con el tamaño correcto
@@ -1147,6 +1550,7 @@ map.on("rotate", () => {
 // Solo mostramos "Buscar en esta zona" cuando el usuario mueve el mapa
 map.on("moveend", (e) => {
   if (e.originalEvent) $("searchArea").classList.remove("hidden");
+  updatePins();
 });
 
 map.on("load", () => {
@@ -1157,6 +1561,9 @@ map.on("load", () => {
 
 // Recalcula el tamaño al girar el móvil o al cambiar la barra del navegador
 window.addEventListener("resize", fitViewport);
+window.matchMedia("(min-width: 900px)").addEventListener("change", (e) => {
+  if (e.matches && currentScale) renderList(currentEntries, currentScale);
+});
 window.addEventListener("orientationchange", () => setTimeout(fitViewport, 300));
 if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
 
@@ -1170,6 +1577,11 @@ $("cheapBtn").addEventListener("click", () => focusStation(extremeStations.cheap
 $("expBtn").addEventListener("click", () => focusStation(extremeStations.exp));
 
 $("locate").addEventListener("click", locate);
+$("infoBtn").addEventListener("click", openInfo);
+$("infoClose").addEventListener("click", closeInfo);
+$("infoModal").addEventListener("click", (e) => {
+  if (e.target.id === "infoModal") closeInfo();
+});
 $("retry").addEventListener("click", loadData);
 $("modalClose").addEventListener("click", closeModal);
 $("modal").addEventListener("click", (e) => {
