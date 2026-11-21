@@ -195,7 +195,7 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
   cursor: pointer;
   text-align: left;
 }
-.row-item:hover { background: rgba(255, 255, 255, 0.1); }
+.row-item:hover { filter: brightness(1.3); }
 .row-price { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .row-info { display: flex; flex-direction: column; min-width: 0; text-align: right; }
 .row-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -487,10 +487,9 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
 const API_URL = "/api/gasolineras";
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const RADIUS_KM = 15;
-const MAX_PINS = 300;
 const DEFAULT_CENTER = { lat: 40.4168, lng: -3.7038 }; // Madrid
 // Alto del desenfoque que iOS 26 pone bajo la barra de estado en las apps de inicio
-const IOS_EDGE_BLUR = 46; //56
+const IOS_EDGE_BLUR = 46;
 
 const FUEL_NAMES = {
   gasolina95: "Gasolina 95 E5",
@@ -814,6 +813,35 @@ function makePin(station, price, cls) {
   return wrap;
 }
 
+// ---------- Color según precio ----------
+// El precio mediano conserva el fondo normal; por debajo se va volviendo verde
+// (verde puro en la más barata) y por encima rojo (rojo puro en la más cara).
+const COLOR_BASE  = [28, 28, 30, 0.82];   // fondo normal de los pines
+const COLOR_ROW   = [255, 255, 255, 0.05]; // fondo normal de las filas de la lista
+const COLOR_CHEAP = [48, 209, 88, 0.92];  // verde
+const COLOR_EXP   = [255, 69, 58, 0.92];  // rojo
+
+function median(values) {
+  if (!values.length) return null;
+  const v = values.slice().sort((a, b) => a - b);
+  const mid = Math.floor(v.length / 2);
+  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+}
+
+function mix(a, b, t) {
+  const c = a.map((x, i) => x + (b[i] - x) * t);
+  return `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${c[3].toFixed(2)})`;
+}
+
+// Devuelve el color de fondo para un precio, dados el mínimo, la mediana y el máximo de la zona.
+// "base" es el color que tiene el precio mediano.
+function priceColor(price, scale, base = COLOR_BASE) {
+  const { min, med, max } = scale;
+  if (price < med && med > min) return mix(base, COLOR_CHEAP, (med - price) / (med - min));
+  if (price > med && max > med) return mix(base, COLOR_EXP, (price - med) / (max - med));
+  return mix(base, base, 0);
+}
+
 function renderExtremes(entries) {
   const box = $("extremes");
   if (!entries.length) {
@@ -836,11 +864,11 @@ function renderExtremes(entries) {
   box.classList.remove("hidden");
 }
 
-// Lista lateral (escritorio): las 80 más baratas de la zona
-function renderList(entries) {
+// Lista lateral (escritorio): todas las de la zona, de más barata a más cara
+function renderList(entries, scale) {
   const box = $("list");
   box.innerHTML = "";
-  const sorted = entries.slice().sort((a, b) => a.s.precios[fuel] - b.s.precios[fuel]).slice(0, 80);
+  const sorted = entries.slice().sort((a, b) => a.s.precios[fuel] - b.s.precios[fuel]);
   if (!sorted.length) {
     const empty = document.createElement("div");
     empty.className = "row-dist";
@@ -853,6 +881,7 @@ function renderList(entries) {
     const row = document.createElement("button");
     row.type = "button";
     row.className = "row-item";
+    row.style.background = priceColor(s.precios[fuel], scale, COLOR_ROW);
     const price = document.createElement("span");
     price.className = "row-price";
     price.innerHTML = priceHtml(s.precios[fuel]);
@@ -876,13 +905,15 @@ function renderEntries(entries) {
   const prices = entries.map((x) => x.s.precios[fuel]);
   const min = prices.length ? Math.min(...prices) : null;
   const max = prices.length ? Math.max(...prices) : null;
+  const scale = { min, med: median(prices), max };
 
-  entries.slice(0, MAX_PINS).forEach(({ s }) => {
+  entries.forEach(({ s }) => {
     const price = s.precios[fuel];
     let cls = "";
     if (price === min) cls = "cheap";
     else if (price === max && max !== min) cls = "exp";
     const el = makePin(s, price, cls);
+    el.firstChild.style.background = priceColor(price, scale);
     markers.push(
       new maplibregl.Marker({ element: el, anchor: "center" })
         .setLngLat([s.lon, s.lat])
@@ -891,7 +922,7 @@ function renderEntries(entries) {
   });
 
   renderExtremes(entries);
-  renderList(entries);
+  renderList(entries, scale);
   $("count").textContent = `Gasolineras: ${entries.length}`;
   $("status").textContent = updatedAt ? `Últ. act. ${formatUpdated(updatedAt)}` : "";
 }
