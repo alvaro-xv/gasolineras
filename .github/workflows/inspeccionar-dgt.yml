@@ -1,0 +1,24 @@
+name: Inspeccionar datos de recarga de la DGT
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspeccionar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Descargar y analizar el XML
+        run: node scripts/inspeccionar-dgt.mjs
+      - name: Guardar el informe
+        run: |
+          git config user.name "actualizador-precios"
+          git config user.email "actions@users.noreply.github.com"
+          git add informes/dgt-recarga.md
+          git diff --cached --quiet || (git commit -m "Informe de datos de recarga de la DGT" && git pull --rebase && git push)
