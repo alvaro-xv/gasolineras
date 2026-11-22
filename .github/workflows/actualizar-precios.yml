@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# No se ejecuta a la vez que la actualización de ubicaciones (las dos escriben en public/data)
+concurrency:
+  group: datos
+  cancel-in-progress: false
+
 jobs:
   actualizar:
     runs-on: ubuntu-latest
@@ -23,5 +28,5 @@ jobs:
         run: |
           git config user.name "actualizador-precios"
           git config user.email "actions@users.noreply.github.com"
-          git add public/data/estaciones.json
-          git diff --cached --quiet || (git commit -m "Actualiza precios de gasolineras" && git push)
+          git add public/data/estaciones.json public/data/historico.json
+          git diff --cached --quiet || (git commit -m "Actualiza precios de gasolineras" && git pull --rebase && git push)
