@@ -1,0 +1,33 @@
+name: Corregir ubicaciones con OpenStreetMap
+
+on:
+  schedule:
+    # Lunes a las 04:00 (hora de Madrid en invierno)
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: datos
+  cancel-in-progress: false
+
+jobs:
+  ubicaciones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Emparejar gasolineras con OpenStreetMap
+        run: node scripts/actualizar-ubicaciones.mjs
+      - name: Regenerar estaciones con las ubicaciones corregidas
+        run: node scripts/actualizar-precios.mjs
+      - name: Guardar cambios
+        run: |
+          git config user.name "actualizador-precios"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/data/correcciones-auto.json public/data/estaciones.json public/data/historico.json
+          git diff --cached --quiet || (git commit -m "Corrige ubicaciones con OpenStreetMap" && git pull --rebase && git push)
