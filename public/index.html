@@ -10,7 +10,7 @@
 <title>Gasolineras</title>
 <link rel="icon" type="image/png" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="/vendor/maplibre-gl.css">
 <style>
 :root {
   color-scheme: dark;
@@ -544,6 +544,7 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
       <li>Si mueves el mapa y pulsas <b>«Buscar en esta zona»</b>, se muestran todas las que hay en la parte del mapa que ves.</li>
       <li>Los selectores de arriba filtran por <b>combustible</b> y por <b>marca</b>. El combustible elegido se recuerda para la próxima vez.</li>
       <li>Las dos tarjetas de arriba son la <b>más barata</b> y la <b>más cara</b> de la zona: púlsalas para ir a ellas.</li>
+      <li>Las ubicaciones del Ministerio a veces están desplazadas, así que cada semana se contrastan con <b>OpenStreetMap</b> y se corrigen automáticamente.</li>
       <li>Cuando hay muchas gasolineras en pantalla se dibujan como <b>puntos de color</b> para que el mapa vaya fluido. Al acercarte aparecen los precios.</li>
     </ul>
 
@@ -595,9 +596,11 @@ sup { font-size: 0.6em; vertical-align: top; line-height: 1; margin-left: 1px; }
   </div>
 </div>
 
-<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="/vendor/maplibre-gl.js"></script>
 <script>
-const API_URL = "/api/gasolineras";
+// Los datos se leen directamente del JSON estático que genera la GitHub Action,
+// así la web funciona en cualquier hosting (no depende de Cloudflare Functions)
+const API_URL = "/data/estaciones.json";
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const RADIUS_KM = 15;
 // Si en pantalla hay más gasolineras que esto, se pintan como puntos de color (rápido)
@@ -703,7 +706,10 @@ let fuel = readFuelCookie() || "gasolina95";
 let brandFilter = "ALL";
 let userLoc = null;      // { lat, lng }
 let view = { mode: "radius", center: null }; // "radius" o "bounds"
-let markers = [];
+let markerById = new Map(); // id de estación -> marcador en el mapa
+// Se pintan pines también un poco más allá de los bordes de la pantalla (35 % por cada lado),
+// así al desplazar el mapa ya están ahí y no "aparecen" de golpe.
+const PIN_MARGIN = 0.35;
 let pinById = new Map(); // id de estación -> botón del pin
 let stationById = new Map(); // id de estación -> estación
 let currentEntries = [];  // resultado actual (zona o radio)
@@ -912,8 +918,8 @@ function stationsInView() {
 }
 
 function clearMarkers() {
-  markers.forEach((m) => m.remove());
-  markers = [];
+  markerById.forEach((m) => m.remove());
+  markerById = new Map();
   pinById = new Map();
 }
 
@@ -1030,6 +1036,7 @@ function renderEntries(entries) {
   currentEntries = entries;
 
   updateDots();
+  clearMarkers();
   updatePins();
   renderExtremes(entries);
   // La lista solo se ve en escritorio; en móvil no la construimos para no gastar memoria
@@ -1053,18 +1060,22 @@ function updateDots() {
   });
 }
 
-// Pines con precio: solo para las gasolineras que están en pantalla y si no son demasiadas.
-// Se recalcula cada vez que el mapa deja de moverse.
+// Pines con precio: para las gasolineras en pantalla (y un margen alrededor) si no son demasiadas.
+// Se actualiza mientras mueves el mapa: solo se añaden las que entran y se quitan las que salen.
 function updatePins() {
-  if (!map) return;
-  clearMarkers();
+  if (!map || !currentScale) return;
   const b = map.getBounds();
-  const visible = currentEntries.filter(({ s }) => b.contains([s.lon, s.lat]));
-  const showPins = visible.length <= PIN_LIMIT;
+  const w = b.getWest(), e = b.getEast(), so = b.getSouth(), n = b.getNorth();
+  let onScreen = 0;
+  for (const { s } of currentEntries) {
+    if (s.lon >= w && s.lon <= e && s.lat >= so && s.lat <= n && ++onScreen > PIN_LIMIT) break;
+  }
+  const showPins = onScreen <= PIN_LIMIT;
   if (map.getLayer("stations-dots")) {
     map.setLayoutProperty("stations-dots", "visibility", showPins ? "none" : "visible");
   }
   if (!showPins) {
+    clearMarkers();
     if (!dotsHintShown) {
       dotsHintShown = true;
       showNotice("Acércate para ver los precios de cada gasolinera");
@@ -1072,19 +1083,33 @@ function updatePins() {
     return;
   }
 
+  const mx = (e - w) * PIN_MARGIN, my = (n - so) * PIN_MARGIN;
+  const wanted = new Map();
+  for (const x of currentEntries) {
+    const { s } = x;
+    if (s.lon >= w - mx && s.lon <= e + mx && s.lat >= so - my && s.lat <= n + my) wanted.set(s.id, s);
+  }
+
+  // Quitar las que ya no hacen falta
+  markerById.forEach((m, id) => {
+    if (!wanted.has(id)) {
+      m.remove();
+      markerById.delete(id);
+      pinById.delete(id);
+    }
+  });
+
+  // Añadir las nuevas
   const { min, max } = currentScale;
-  visible.forEach(({ s }) => {
+  wanted.forEach((s, id) => {
+    if (markerById.has(id)) return;
     const price = s.precios[fuel];
     let cls = "";
     if (price === min) cls = "cheap";
     else if (price === max && max !== min) cls = "exp";
     const el = makePin(s, price, cls);
     el.firstChild.style.background = priceColor(price, currentScale);
-    markers.push(
-      new maplibregl.Marker({ element: el, anchor: "center" })
-        .setLngLat([s.lon, s.lat])
-        .addTo(map)
-    );
+    markerById.set(id, new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([s.lon, s.lat]).addTo(map));
   });
 
   if (pendingPulseId) {
@@ -1256,7 +1281,8 @@ function hideLoader() {
 async function loadData() {
   showLoader("Cargando gasolineras…");
   try {
-    const res = await fetch(API_URL);
+    // Las ubicaciones ya vienen corregidas (OpenStreetMap + correcciones manuales) desde la GitHub Action
+    const res = await fetch(API_URL, { cache: "no-cache" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
     stations = json.estaciones.map((s) => ({ ...s, marca: normalizeBrand(s.rotulo) }));
@@ -1272,6 +1298,18 @@ async function loadData() {
 }
 
 // ---------- Detalle ----------
+
+// "AVENIDA LIBERTAD (DE LA), 64" -> "Avenida de la Libertad, 64"
+function cleanAddress(dir) {
+  if (!dir) return "";
+  let d = dir.replace(/^(\S+)\s+(.+?)\s*\(([^)]+)\)/, (m, tipo, nombre, art) => `${tipo} ${art} ${nombre}`);
+  return d.toLowerCase().replace(/(^|[\s,.(\/-])([a-záéíóúñü])/g, (m, sep, c) => sep + c.toUpperCase())
+    .replace(/\b(De|Del|La|Las|Los|El|Y)\b/g, (w) => w.toLowerCase());
+}
+
+function mapsQuery(s) {
+  return [s.rotulo, cleanAddress(s.direccion), s.municipio].filter(Boolean).join(", ");
+}
 
 function openModal(s) {
   $("modalTitle").textContent = s.marca;
@@ -1296,8 +1334,11 @@ function openModal(s) {
     list.appendChild(box);
   });
 
-  $("btnGoogle").href = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lon}`;
-  $("btnApple").href = `https://maps.apple.com/?ll=${s.lat},${s.lon}&q=${encodeURIComponent(s.marca)}`;
+  // Buscamos por nombre + dirección en vez de por coordenadas: las coordenadas del Ministerio
+  // a veces están desplazadas, y así Google/Apple encuentran la ficha real de la gasolinera.
+  const q = encodeURIComponent(mapsQuery(s));
+  $("btnGoogle").href = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  $("btnApple").href = `https://maps.apple.com/?q=${q}&sll=${s.lat},${s.lon}`;
   $("modal").classList.remove("hidden");
 }
 
@@ -1548,6 +1589,15 @@ map.on("rotate", () => {
 });
 
 // Solo mostramos "Buscar en esta zona" cuando el usuario mueve el mapa
+// Mientras se mueve el mapa, se actualizan los pines como mucho cada 120 ms
+let pinTimer = null;
+map.on("move", () => {
+  if (pinTimer) return;
+  pinTimer = setTimeout(() => {
+    pinTimer = null;
+    updatePins();
+  }, 120);
+});
 map.on("moveend", (e) => {
   if (e.originalEvent) $("searchArea").classList.remove("hidden");
   updatePins();
